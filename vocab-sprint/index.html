@@ -1,0 +1,1761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vocab Sprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&display=swap">
+<style>
+/* Layout: one narrow column. Home is a launch panel, the unit list, then folded word list and settings.
+   Practice is a single workbook card: the definition up top, the answer written on a blank line. */
+:root {
+  --paper: #f2f4f8;
+  --sheet: #ffffff;
+  --ink: #161d2b;
+  --ink-2: #4c576b;
+  --ink-3: #6f7a8f;
+  --rule: #dfe4ec;
+  --rule-strong: #c3ccda;
+  --accent: #2346d4;
+  --accent-hover: #1a37ad;
+  --on-accent: #ffffff;
+  --accent-tint: #e7ecfc;
+  --margin: #e0656b;
+  --good: #11744a;
+  --good-tint: #e0f3e9;
+  --warn: #8f5400;
+  --warn-tint: #fcefd9;
+  --bad: #b3303a;
+  --bad-tint: #fbe5e6;
+  --lv0: #e2e7ef;
+  --lv1: #c3d0f6;
+  --lv2: #8aa2ee;
+  --lv3: #4f71e1;
+  --lv4: #2346d4;
+  --shadow: 0 1px 2px rgba(22, 29, 43, 0.05), 0 10px 28px rgba(22, 29, 43, 0.07);
+  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d121b; --sheet: #151c29; --ink: #e7ecf5; --ink-2: #aab4c7; --ink-3: #8691a6;
+    --rule: #253045; --rule-strong: #35425b; --accent: #8ea6ff; --accent-hover: #aabcff; --on-accent: #0d121b;
+    --accent-tint: #1b2647; --margin: #c95a61; --good: #62d39d; --good-tint: #10301f; --warn: #f0b45a;
+    --warn-tint: #33260f; --bad: #ff8d93; --bad-tint: #3a1a1e; --lv0: #232c3d; --lv1: #2c3c70;
+    --lv2: #3e5bc0; --lv3: #6d8af3; --lv4: #b6c5ff;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d121b; --sheet: #151c29; --ink: #e7ecf5; --ink-2: #aab4c7; --ink-3: #8691a6;
+  --rule: #253045; --rule-strong: #35425b; --accent: #8ea6ff; --accent-hover: #aabcff; --on-accent: #0d121b;
+  --accent-tint: #1b2647; --margin: #c95a61; --good: #62d39d; --good-tint: #10301f; --warn: #f0b45a;
+  --warn-tint: #33260f; --bad: #ff8d93; --bad-tint: #3a1a1e; --lv0: #232c3d; --lv1: #2c3c70;
+  --lv2: #3e5bc0; --lv3: #6d8af3; --lv4: #b6c5ff;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button, input, textarea { font: inherit; color: inherit; }
+ul { margin: 0; padding: 0; list-style: none; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.app { max-width: 40rem; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; }
+@media (min-width: 640px) { .app { padding-inline: 24px; padding-block: 40px 72px; } }
+.screen { display: flex; flex-direction: column; gap: 20px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.eyebrow {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+}
+
+/* Buttons */
+.btn {
+  appearance: none; -webkit-appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 10px 16px;
+  border: 1px solid transparent; border-radius: 10px;
+  font-weight: 700; line-height: 1.2; cursor: pointer; text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.ghost { background: var(--sheet); border-color: var(--rule-strong); color: var(--ink); }
+.btn.ghost:hover { border-color: var(--accent); background: var(--accent-tint); }
+.btn.big { width: 100%; min-height: 56px; font-size: 1.125rem; }
+.btn.small { min-height: 40px; padding: 6px 12px; font-size: 0.9375rem; }
+.btn.tiny { min-height: 32px; padding: 4px 10px; font-size: 0.8125rem; border-radius: 8px; }
+.btn.danger { color: var(--bad); }
+.btn.danger.armed { background: var(--bad); border-color: var(--bad); color: var(--sheet); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.icon-btn {
+  appearance: none; -webkit-appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 44px; min-height: 44px; padding: 0 12px;
+  border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--sheet);
+  color: var(--ink); font-weight: 700; font-size: 0.9375rem; cursor: pointer;
+}
+.icon-btn svg { width: 18px; height: 18px; flex: none; }
+.icon-btn:hover { border-color: var(--accent); }
+kbd {
+  font-family: var(--font-mono); font-size: 0.78em; font-weight: 500;
+  padding: 0 5px; border: 1px solid var(--rule-strong); border-bottom-width: 2px; border-radius: 5px;
+  background: var(--paper); color: var(--ink-2);
+}
+
+/* Meter: filled from the left by level, the empty track is words not yet seen */
+.meter {
+  display: flex; height: 10px; border-radius: 999px; overflow: hidden;
+  background: var(--lv0);
+}
+.meter.thin { height: 6px; }
+.meter .seg { display: block; height: 100%; transition: width 0.35s ease; }
+.meter .seg + .seg { box-shadow: -2px 0 0 var(--sheet); }
+.lv0 { background: var(--lv0); }
+.lv1 { background: var(--lv1); }
+.lv2 { background: var(--lv2); }
+.lv3 { background: var(--lv3); }
+.lv4 { background: var(--lv4); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.sw.lv0 { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  font-size: 0.875rem; color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend b { color: var(--ink); }
+
+/* Home */
+.masthead { display: grid; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.brand h1 {
+  font-family: var(--font-display); font-weight: 600; font-size: 2.125rem;
+  line-height: 1.05; letter-spacing: -0.01em;
+}
+.brand h1:focus { outline: none; }
+.lede { color: var(--ink-2); max-width: 34rem; }
+
+.launch {
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 20px; display: grid; gap: 14px;
+}
+.launch-head { display: grid; gap: 4px; }
+.launch h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.875rem; line-height: 1.1; overflow-wrap: anywhere; }
+.launch-meta { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tips { font-size: 0.8125rem; color: var(--ink-3); line-height: 1.7; }
+
+.block { display: grid; gap: 10px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.section-head h2, .block h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.375rem; }
+.block h3 { font-size: 1.125rem; }
+.section-note { color: var(--ink-3); font-size: 0.875rem; }
+.unit-list { display: grid; gap: 8px; }
+.unit {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 12px;
+  padding: 12px 14px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px;
+}
+.unit input[type="checkbox"] { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.unit-text { display: grid; min-width: 0; cursor: pointer; }
+.unit-name { font-weight: 700; overflow-wrap: anywhere; }
+.unit-book { font-size: 0.8125rem; color: var(--ink-3); overflow-wrap: anywhere; }
+.unit .meter { grid-column: 2 / -1; }
+.empty-note { color: var(--ink-3); font-size: 0.9375rem; }
+
+details.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; }
+details.panel > summary {
+  list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; border-radius: 12px;
+}
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary::after {
+  content: ""; width: 8px; height: 8px; margin-right: 4px; flex: none;
+  border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3);
+  transform: rotate(45deg); transition: transform 0.2s;
+}
+details.panel[open] > summary::after { transform: rotate(225deg); }
+.count { color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+.panel-body { padding: 0 16px 16px; display: grid; gap: 14px; }
+
+.word-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline;
+  padding: 10px 0; border-top: 1px solid var(--rule);
+}
+.word-row:first-child { border-top: 0; }
+.wr-head { min-width: 0; overflow-wrap: anywhere; }
+.wr-word { font-family: var(--font-mono); font-weight: 600; }
+.wr-pos { font-family: var(--font-display); font-style: italic; color: var(--ink-3); margin-left: 8px; }
+.wr-def { grid-column: 1 / -1; color: var(--ink-2); font-size: 0.9375rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 0.8125rem; color: var(--ink-2);
+}
+.chip .pct { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.toggle { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; cursor: pointer; }
+.toggle input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.toggle b { display: block; }
+.toggle small { display: block; color: var(--ink-3); font-size: 0.875rem; }
+.sync { font-size: 0.875rem; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
+.sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--rule-strong); flex: none; }
+.sync.cloud::before { background: var(--good); }
+
+/* Practice */
+.drill-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.drill-progress { display: grid; gap: 6px; min-width: 0; }
+.drill-label { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8125rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.drill-label span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.drill-label span:last-child { white-space: nowrap; }
+
+.card {
+  position: relative; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px 16px 18px 32px; display: grid; gap: 16px;
+}
+.card::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 17px; width: 2px;
+  background: var(--margin); opacity: 0.5;
+}
+@media (min-width: 560px) {
+  .card { padding: 24px 24px 22px 46px; gap: 18px; }
+  .card::before { left: 26px; }
+}
+.card-eyebrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 24px; }
+.tag {
+  font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px; background: var(--lv0); color: var(--ink-2);
+}
+.tag.new { background: var(--accent-tint); color: var(--accent); }
+.unit-tag { font-size: 0.8125rem; color: var(--ink-3); }
+.definition {
+  font-family: var(--font-display); font-weight: 500;
+  font-size: clamp(1.5rem, 1.15rem + 1.8vw, 2.125rem); line-height: 1.22;
+  text-wrap: pretty; overflow-wrap: anywhere; min-height: 2.44em;
+}
+.definition .pos {
+  font-style: italic; font-weight: 400; font-size: 0.62em; color: var(--ink-3);
+  margin-right: 0.2em; white-space: nowrap;
+}
+.definition.enter { animation: rise 0.22s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.answer { display: grid; gap: 12px; }
+.blank { position: relative; }
+.blank input, .trace {
+  font-family: var(--font-mono); font-weight: 500;
+  font-size: clamp(1.375rem, 1.15rem + 1.2vw, 1.75rem); letter-spacing: 0.06em; line-height: 1.3;
+  padding: 6px 2px 8px; margin: 0;
+}
+.blank input {
+  appearance: none; -webkit-appearance: none; position: relative; z-index: 1;
+  display: block; width: 100%; border: 0; border-radius: 0; background: transparent;
+  border-bottom: 2px solid var(--ink); color: var(--ink); caret-color: var(--accent); outline: none;
+}
+.blank input:focus { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }
+.blank input::placeholder {
+  font-family: var(--font-ui); font-weight: 400; font-size: 1rem; letter-spacing: 0;
+  color: var(--ink-3); opacity: 1;
+}
+.blank.good input { border-bottom-color: var(--good); box-shadow: 0 2px 0 0 var(--good); }
+.blank.bad input { border-bottom-color: var(--bad); box-shadow: 0 2px 0 0 var(--bad); }
+.blank.warn input { border-bottom-color: var(--warn); box-shadow: 0 2px 0 0 var(--warn); }
+.trace {
+  position: absolute; inset: 0 0 auto 0; color: var(--ink-3); opacity: 0.6;
+  white-space: pre; overflow: hidden; pointer-events: none; border-bottom: 2px solid transparent;
+}
+.answer-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.answer-actions .left { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.feedback:empty { display: none; }
+.fb { border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; animation: rise 0.18s ease-out; }
+.fb.good { background: var(--good-tint); }
+.fb.warn { background: var(--warn-tint); }
+.fb.bad { background: var(--bad-tint); }
+.fb.new { background: var(--accent-tint); }
+.fb-title { font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fb-title svg { width: 18px; height: 18px; flex: none; }
+.fb.good .fb-title { color: var(--good); }
+.fb.warn .fb-title { color: var(--warn); }
+.fb.bad .fb-title { color: var(--bad); }
+.fb.new .fb-title { color: var(--accent); }
+.lvl-up { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink-2); font-size: 0.875rem; }
+.fb-word {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-weight: 600; font-size: 1.625rem; letter-spacing: 0.05em;
+  color: var(--ink); overflow-wrap: anywhere;
+}
+.fb-word mark { background: transparent; color: var(--bad); text-decoration: underline 3px; text-underline-offset: 5px; }
+.fb.warn .fb-word mark { color: var(--warn); }
+.fb-note, .fb-yours, .fb-instr { font-size: 0.9375rem; color: var(--ink-2); }
+.fb-note b { color: var(--ink); }
+.fb-yours .yours { font-family: var(--font-mono); color: var(--ink); }
+.fb-yours del { color: var(--bad); text-decoration-thickness: 2px; }
+.speak {
+  appearance: none; -webkit-appearance: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--rule-strong);
+  background: var(--sheet); color: var(--ink-2); cursor: pointer;
+}
+.speak svg { width: 18px; height: 18px; }
+
+.drill-stats { text-align: center; font-size: 0.875rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.caught { gap: 12px; }
+.caught h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.625rem; line-height: 1.15; }
+.caught p { color: var(--ink-2); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.shake { animation: shake 0.3s ease; }
+
+/* Summary */
+.sum-head { display: grid; gap: 6px; }
+.sum-head h2 { font-family: var(--font-display); font-weight: 600; font-size: 2rem; line-height: 1.1; }
+.sum-head h2:focus { outline: none; }
+.sum-next { color: var(--ink-2); }
+.stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 560px) { .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; }
+.stat b { font-family: var(--font-display); font-weight: 600; font-size: 1.875rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips li {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+  background: var(--sheet); border: 1px solid var(--rule); font-size: 0.875rem; color: var(--ink-2);
+}
+.chips li b { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
+
+/* Editor */
+.ed-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ed-head h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; }
+.ed-head h2:focus { outline: none; }
+.ed-form { display: grid; gap: 16px; }
+.field-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 560px) { .field-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-weight: 700; font-size: 0.9375rem; }
+.field-help { font-size: 0.875rem; color: var(--ink-3); }
+.field input, .field textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: 10px;
+  background: var(--sheet); color: var(--ink); font-size: 1rem;
+}
+.field textarea { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.55; min-height: 15rem; resize: vertical; }
+.field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.preview { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.preview-head { font-weight: 700; }
+.preview ol { margin: 0; padding-left: 1.6em; display: grid; gap: 4px; font-size: 0.9375rem; color: var(--ink-2); }
+.preview ol b { font-family: var(--font-mono); color: var(--ink); font-weight: 600; }
+.preview ol i { font-family: var(--font-display); color: var(--ink-3); }
+.problems { font-size: 0.875rem; color: var(--warn); display: grid; gap: 2px; }
+
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <main id="home" class="screen" aria-labelledby="app-title">
+    <header class="masthead">
+      <div class="brand">
+        <svg viewBox="0 0 34 34" aria-hidden="true">
+          <rect x="3" y="25" width="28" height="3" rx="1.5" fill="currentColor"></rect>
+          <rect x="15.5" y="5" width="3" height="16" rx="1.5" fill="var(--accent)"></rect>
+          <rect x="12" y="5" width="10" height="2.5" rx="1.25" fill="var(--accent)"></rect>
+          <rect x="12" y="18.5" width="10" height="2.5" rx="1.25" fill="var(--accent)"></rect>
+        </svg>
+        <h1 id="app-title" tabindex="-1">Vocab Sprint</h1>
+      </div>
+      <p class="lede">Read the definition, type the word. Words you miss come back within a few cards. Words you answer quickly get spaced further apart.</p>
+    </header>
+
+    <section class="launch" aria-labelledby="launch-title">
+      <div class="launch-head">
+        <p class="eyebrow" id="launch-book"></p>
+        <h2 id="launch-title"></h2>
+        <p class="launch-meta" id="launch-meta"></p>
+      </div>
+      <div class="meter" id="launch-meter" role="img"></div>
+      <ul class="legend" id="launch-legend"></ul>
+      <button class="btn primary big" id="start" type="button">Start practice</button>
+      <p class="tips"><kbd>Enter</kbd> checks your answer · <kbd>?</kbd> shows a letter · <kbd>Enter</kbd> on an empty line shows the word</p>
+    </section>
+
+    <section class="block" aria-labelledby="units-title">
+      <div class="section-head">
+        <h2 id="units-title">Units</h2>
+        <button class="btn ghost small" id="add-unit" type="button">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          Add a unit
+        </button>
+      </div>
+      <p class="section-note">Tick every unit you want mixed into practice.</p>
+      <ul class="unit-list" id="unit-list"></ul>
+    </section>
+
+    <details class="panel" id="words-panel">
+      <summary><span>Word list<span class="count" id="words-count"></span></span></summary>
+      <div class="panel-body"><ul class="word-list" id="word-list"></ul></div>
+    </details>
+
+    <details class="panel" id="settings-panel">
+      <summary><span>Settings</span></summary>
+      <div class="panel-body">
+        <label class="toggle"><input type="checkbox" id="set-sound"><span><b>Sound effects</b><small>A short tone for right and wrong answers.</small></span></label>
+        <label class="toggle" id="set-speak-row"><input type="checkbox" id="set-speak"><span><b>Say each word aloud</b><small>Your device reads the word after you answer.</small></span></label>
+        <label class="toggle"><input type="checkbox" id="set-lenient"><span><b>Forgive one-letter typos</b><small>Leave this off if your test grades spelling.</small></span></label>
+        <div class="row"><button class="btn ghost small danger" id="reset" type="button">Reset progress for the selected units</button></div>
+        <p class="sync" id="sync"></p>
+      </div>
+    </details>
+  </main>
+
+  <main id="practice" class="screen" aria-label="Practice" hidden>
+    <header class="drill-bar">
+      <button class="icon-btn" id="end" type="button">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        End
+      </button>
+      <div class="drill-progress">
+        <div class="drill-label"><span id="drill-title"></span><span id="drill-count"></span></div>
+        <div class="meter thin" id="drill-meter" role="img"></div>
+      </div>
+      <button class="icon-btn" id="mute" type="button" aria-pressed="true" aria-label="Sound effects"></button>
+    </header>
+
+    <article class="card" id="card">
+      <p class="card-eyebrow"><span class="tag" id="c-tag"></span><span class="unit-tag" id="c-unit"></span></p>
+      <p class="definition" id="c-def"><span class="pos" id="c-pos"></span><span id="c-text"></span></p>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+      <form class="answer" id="answer-form" autocomplete="off" novalidate>
+        <label class="sr-only" for="answer">Type the word that matches the definition</label>
+        <div class="blank" id="blank">
+          <div class="trace" id="trace" aria-hidden="true"></div>
+          <input id="answer" name="answer" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
+        </div>
+        <div class="answer-actions">
+          <div class="left">
+            <button class="btn ghost small" id="hint-btn" type="button">Hint <kbd>?</kbd></button>
+            <button class="btn ghost small" id="idk-btn" type="button">Show answer</button>
+          </div>
+          <button class="btn primary small" id="check-btn" type="submit">Check</button>
+        </div>
+      </form>
+    </article>
+
+    <section class="card caught" id="caught" aria-labelledby="caught-title" hidden>
+      <p class="eyebrow">Caught up</p>
+      <h2 id="caught-title">Every word is fresh right now</h2>
+      <p>The next review is due <b id="caught-when"></b>. Practicing then builds longer-lasting memory than drilling now, but extra rounds still help right before a test.</p>
+      <div class="row">
+        <button class="btn primary" id="caught-keep" type="button">Keep drilling</button>
+        <button class="btn ghost" id="caught-done" type="button">Finish</button>
+      </div>
+    </section>
+
+    <p class="drill-stats" id="drill-stats"></p>
+  </main>
+
+  <main id="summary" class="screen" aria-labelledby="sum-title" hidden>
+    <header class="sum-head">
+      <p class="eyebrow">Session complete</p>
+      <h2 id="sum-title" tabindex="-1"></h2>
+      <p class="sum-next" id="sum-next"></p>
+    </header>
+    <div class="stats-grid" id="sum-stats"></div>
+    <section class="block" id="sum-up-wrap"><h3>Moved up</h3><ul class="chips" id="sum-up"></ul></section>
+    <section class="block" id="sum-miss-wrap"><h3>Missed most</h3><ul class="chips" id="sum-miss"></ul></section>
+    <div class="row">
+      <button class="btn primary" id="sum-again" type="button">Keep practicing</button>
+      <button class="btn ghost" id="sum-home" type="button">Back to units</button>
+    </div>
+  </main>
+
+  <main id="editor" class="screen" aria-labelledby="ed-title" hidden>
+    <header class="ed-head">
+      <button class="icon-btn" id="ed-back" type="button">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        Units
+      </button>
+      <h2 id="ed-title" tabindex="-1">Add a unit</h2>
+    </header>
+    <form class="ed-form" id="ed-form" autocomplete="off" novalidate>
+      <div class="field-row">
+        <div class="field"><label for="ed-book">Book</label><input id="ed-book" type="text" maxlength="80"></div>
+        <div class="field"><label for="ed-name">Unit</label><input id="ed-name" type="text" maxlength="60" placeholder="Unit 4"></div>
+      </div>
+      <div class="field">
+        <label for="ed-words">Words</label>
+        <p class="field-help">One word per line: the word, its part of speech in parentheses, then the definition. Anything after a semicolon is dropped, so you can paste a full entry.</p>
+        <textarea id="ed-words" rows="12" spellcheck="false" placeholder="adversary (n.) an enemy, opponent&#10;alienate (v.) to turn away; to make indifferent or hostile&#10;craven (adj.) cowardly; (n.) a coward"></textarea>
+      </div>
+      <div class="preview" id="ed-preview" aria-live="polite"></div>
+      <div class="row">
+        <button class="btn primary" id="ed-save" type="submit">Save unit</button>
+        <button class="btn ghost" id="ed-cancel" type="button">Cancel</button>
+        <button class="btn ghost danger" id="ed-delete" type="button" hidden>Delete unit</button>
+      </div>
+    </form>
+  </main>
+
+</div>
+<canvas id="confetti" aria-hidden="true" hidden></canvas>
+
+<script src="units.js"></script>
+<script>
+"use strict";
+// ===== ENGINE START =====
+// Memory model. Pure functions only: no DOM, no storage.
+//
+// Each word the learner has seen carries a state:
+//   s  stability, in seconds: how long until the chance of recalling it drops to 90%
+//   t  time of the last answer (ms since epoch)
+//   e  ease, 0.6-1.4: how quickly this word's intervals grow
+//   n  answers so far, c correct, w wrong
+//   lf stability before the last miss, so a word you used to know recovers faster
+//
+// Recall chance follows a power-law forgetting curve: R(t) = (1 + F*t/S)^-0.5.
+// A correct answer multiplies S; the multiplier is bigger when the answer came
+// after more forgetting (the spacing effect) and when it came quickly.
+// A miss drops S to seconds so the word returns after a few other cards.
+const Engine = (() => {
+  const F = 19 / 81;
+  const R_DUE = 0.85;
+  const DUE_K = (Math.pow(R_DUE, -2) - 1) / F;
+  const GROW = 2.4;
+  const MAX_S = 120 * 86400;
+  const FRAGILE_S = 60;
+  const G = { AGAIN: 0, ALMOST: 1, HARD: 2, GOOD: 3, EASY: 4 };
+  const LEVELS = [
+    { key: "new", name: "New" },
+    { key: "learning", name: "Learning" },
+    { key: "familiar", name: "Familiar" },
+    { key: "strong", name: "Strong" },
+    { key: "mastered", name: "Mastered" },
+  ];
+  // Stability after the very first try, by grade: knowing a word cold on first sight skips ahead.
+  const FIRST_S = [12, 25, 60, 240, 360];
+  const EASE_STEP = [-0.15, -0.05, -0.03, 0.02, 0.06];
+
+  function level(st) {
+    if (!st) return 0;
+    if (st.s >= 86400) return 4;
+    if (st.s >= 3600) return 3;
+    if (st.s >= 180) return 2;
+    return 1;
+  }
+
+  function recall(st, now, L) {
+    const t = Math.max(0, now - st.t) / 1000;
+    return Math.pow(1 + (F * t) / (st.s * L), -0.5);
+  }
+
+  function dueAt(st, L) {
+    return st.t + DUE_K * st.s * L * 1000;
+  }
+
+  function review(prev, grade, now, L) {
+    if (!prev) {
+      const ok = grade >= G.HARD ? 1 : 0;
+      return { st: { s: FIRST_S[grade], t: now, e: 1, n: 1, c: ok, w: 1 - ok }, R: null };
+    }
+    const st = Object.assign({}, prev);
+    const R = recall(prev, now, L);
+    if (grade >= G.HARD) {
+      const g = grade === G.HARD ? 0.5 : grade === G.GOOD ? 1 : 1.4;
+      const inc = Math.min(25, Math.max(1.15, 1 + GROW * g * st.e * (Math.exp(3 * (1 - R)) - 1)));
+      let s = st.s * inc;
+      if (st.lf) {
+        s = Math.max(s, Math.min(st.lf * 0.4, s * 3));
+        if (s >= st.lf * 0.4) delete st.lf;
+      }
+      st.s = Math.min(MAX_S, s);
+      st.c = (st.c || 0) + 1;
+    } else {
+      st.lf = Math.max(st.lf || 0, st.s);
+      st.s = grade === G.ALMOST ? Math.min(st.s, 25) : 12;
+      st.w = (st.w || 0) + 1;
+    }
+    st.e = Math.min(1.4, Math.max(0.6, (st.e || 1) + EASE_STEP[grade]));
+    st.n = (st.n || 0) + 1;
+    st.t = now;
+    return { st, R };
+  }
+
+  // Stretches or shrinks every interval to match how this learner actually does.
+  function calibrate(L, R, grade) {
+    if (R == null) return L;
+    const out = grade >= G.HARD ? 1 : grade === G.ALMOST ? 0.5 : 0;
+    return Math.min(1.8, Math.max(0.6, L * Math.exp(0.04 * (out - R))));
+  }
+
+  // Choose the next card.
+  //   cards   [{id, ...}] in the practice set
+  //   states  {id: state}
+  //   ses     {shown: [ids, oldest first], recent: [1|0 review outcomes]}
+  // Order of preference: a new word when nothing is due and the learner is keeping up,
+  // then words still being learned that are due, then other due words, then whatever
+  // is closest to being forgotten. The last few cards shown are skipped so a missed
+  // word comes back after a short gap instead of immediately.
+  function pick(cards, states, L, ses, now, rnd) {
+    rnd = rnd || Math.random;
+    const fresh = [];
+    const dueLearning = [];
+    const dueReview = [];
+    const early = [];
+    let fragile = 0;
+    const coolN = Math.min(3, cards.length - 1);
+    const cool = new Set(coolN > 0 ? ses.shown.slice(-coolN) : []);
+    for (const c of cards) {
+      const st = states[c.id];
+      if (!st) { fresh.push(c); continue; }
+      if (st.s < FRAGILE_S) fragile++;
+      if (cool.has(c.id)) continue;
+      const r = recall(st, now, L) + rnd() * 0.02;
+      const item = { c, r };
+      if (r < R_DUE) (st.s < 180 ? dueLearning : dueReview).push(item);
+      else early.push(item);
+    }
+    const recent = ses.recent.slice(-8);
+    const acc = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 1;
+    const onRoll = recent.length >= 4 && recent.slice(-4).every((x) => x === 1);
+    const dueCount = dueLearning.length + dueReview.length;
+    const byR = (a, b) => a.r - b.r;
+    const keepingUp = acc >= 0.7 || fragile < 4;
+    if (fresh.length && keepingUp && (dueCount === 0 || (dueCount === 1 && onRoll))) {
+      return { card: fresh[Math.floor(rnd() * fresh.length)], kind: "new" };
+    }
+    if (dueLearning.length) return { card: dueLearning.sort(byR)[0].c, kind: "due" };
+    if (dueReview.length) return { card: dueReview.sort(byR)[0].c, kind: "due" };
+    if (early.length) return { card: early.sort(byR)[0].c, kind: "extra", caughtUp: fresh.length === 0 };
+    if (fresh.length) return { card: fresh[Math.floor(rnd() * fresh.length)], kind: "new" };
+    // Tiny set with every card cooling down: take the one shown longest ago.
+    const order = cards.slice().sort((a, b) => ses.shown.lastIndexOf(a.id) - ses.shown.lastIndexOf(b.id));
+    return { card: order[0], kind: "extra", caughtUp: true };
+  }
+
+  return { G, LEVELS, R_DUE, level, recall, dueAt, review, calibrate, pick };
+})();
+// ===== ENGINE END =====
+
+(() => {
+  const G = Engine.G;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+  const num = (x, d) => (Number.isFinite(+x) ? +x : d);
+  if (!document.documentElement.lang) document.documentElement.lang = "en";
+
+  const ICON = {
+    check: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+    speaker: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8h3l4-3.5v11L6 12H3z" fill="currentColor"/><path d="M13 7.5a3.5 3.5 0 010 5M15.2 5.3a6.6 6.6 0 010 9.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
+    muted: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8h3l4-3.5v11L6 12H3z" fill="currentColor"/><path d="M13.5 8l4 4M17.5 8l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
+  };
+
+  /* ---------- text helpers ---------- */
+  function norm(s) {
+    return String(s || "").normalize("NFKC").toLowerCase()
+      .replace(/[‘’`]/g, "'").replace(/\s+/g, " ").trim().replace(/[.!,;:]+$/, "");
+  }
+  function firstDef(d) {
+    return String(d || "").split(";")[0].replace(/\s+/g, " ").trim().replace(/[\s.,:]+$/, "");
+  }
+  function cleanPos(p) {
+    p = String(p || "").replace(/[()]/g, "").trim().toLowerCase();
+    return !p ? "" : p.endsWith(".") ? p : p + ".";
+  }
+  // Edit distance that counts a swapped pair of letters as one mistake.
+  function osa(a, b) {
+    const n = a.length, m = b.length;
+    if (!n) return m;
+    if (!m) return n;
+    const d = [];
+    for (let i = 0; i <= n; i++) { d.push(new Array(m + 1).fill(0)); d[i][0] = i; }
+    for (let j = 0; j <= m; j++) d[0][j] = j;
+    for (let i = 1; i <= n; i++) {
+      for (let j = 1; j <= m; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
+    }
+    return d[n][m];
+  }
+  const SUFFIXES = ["s", "es", "d", "ed", "ing", "ly", "y", "ness", "ment", "ments", "er", "ers", "or", "ors", "ion", "ions", "ive", "al", "ity", "ies", "ied"];
+  // "harassed" for "harass", "coercion" for "coerce": the right word in another form.
+  function isOtherForm(a, f) {
+    if (a.length < f.length || a === f) return false;
+    const stems = [f];
+    if (f.endsWith("e")) stems.push(f.slice(0, -1));
+    if (f.endsWith("y")) stems.push(f.slice(0, -1) + "i");
+    return stems.some((st) => a.startsWith(st) && SUFFIXES.includes(a.slice(st.length)));
+  }
+  // Longest common subsequence: which letters of each string line up with the other.
+  function lcs(a, b) {
+    const n = a.length, m = b.length;
+    const dp = [];
+    for (let i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const ka = new Set(), kb = new Set();
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { ka.add(i); kb.add(j); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    return { ka, kb, len: dp[0][0] };
+  }
+  function fmtIn(ms) {
+    if (ms <= 0) return "now";
+    if (ms < 60000) return "in under a minute";
+    const m = Math.round(ms / 60000);
+    if (m < 60) return "in about " + m + " min";
+    const h = Math.round(m / 60);
+    if (h < 24) return "in about " + h + (h === 1 ? " hour" : " hours");
+    const days = Math.round(h / 24);
+    return days === 1 ? "in about a day" : "in about " + days + " days";
+  }
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  /* ---------- units ---------- */
+  function normWord(e) {
+    const parts = Array.isArray(e) ? e : [e && e.word, e && e.pos, e && e.def];
+    const forms = String(parts[0] || "").split("|").map((s) => s.trim()).filter(Boolean);
+    return { word: forms[0] || "", alts: forms.slice(1), pos: cleanPos(parts[1]), def: firstDef(parts[2]) };
+  }
+  function normUnit(u, builtin) {
+    return {
+      id: String(u.id),
+      book: String(u.book || ""),
+      name: String(u.name || "Untitled unit"),
+      builtin,
+      words: (Array.isArray(u.words) ? u.words : []).map(normWord).filter((w) => w.word && w.def),
+    };
+  }
+  const BUILTIN = (Array.isArray(window.VOCAB_UNITS) ? window.VOCAB_UNITS : [])
+    .filter((u) => u && u.id)
+    .map((u) => normUnit(u, true));
+  function allUnits() { return BUILTIN.concat(S.custom.map((u) => normUnit(u, false))); }
+  function selectedUnits() { return allUnits().filter((u) => S.sel.includes(u.id)); }
+  function cardsOf(units) {
+    const out = [];
+    const seen = new Set();
+    for (const u of units) {
+      for (const w of u.words) {
+        const id = u.id + ":" + norm(w.word);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, unitId: u.id, unitName: u.name, word: w.word, alts: w.alts, pos: w.pos, def: w.def });
+      }
+    }
+    return out;
+  }
+  function selectionTitle(units) {
+    if (!units.length) return "No unit selected";
+    if (units.length === 1) return units[0].name;
+    return units.length + " units mixed";
+  }
+
+  /* ---------- saved state ---------- */
+  const STORE_KEY = "vocab-sprint/v1";
+  function blankState() {
+    return {
+      v: 1,
+      cards: {},
+      L: 1, Lat: 0,
+      times: { ttfk: [], tot: [] },
+      settings: { sound: true, speak: false, lenient: false }, setAt: 0,
+      sel: BUILTIN.length ? [BUILTIN[0].id] : [], selAt: 0,
+      custom: [], tomb: {},
+      days: {},
+    };
+  }
+  function sanitize(raw) {
+    const s = blankState();
+    if (!raw || typeof raw !== "object") return s;
+    if (raw.cards && typeof raw.cards === "object") {
+      for (const [k, v] of Object.entries(raw.cards)) {
+        if (!v || !(num(v.s, 0) > 0) || !(num(v.t, 0) > 0)) continue;
+        const st = { s: +v.s, t: +v.t, e: num(v.e, 1), n: num(v.n, 1), c: num(v.c, 0), w: num(v.w, 0) };
+        if (num(v.lf, 0) > 0) st.lf = +v.lf;
+        s.cards[k] = st;
+      }
+    }
+    s.L = Math.min(1.8, Math.max(0.6, num(raw.L, 1)));
+    s.Lat = num(raw.Lat, 0);
+    if (raw.times && typeof raw.times === "object") {
+      for (const k of ["ttfk", "tot"]) {
+        if (Array.isArray(raw.times[k])) s.times[k] = raw.times[k].map(Number).filter(Number.isFinite).slice(-30);
+      }
+    }
+    if (raw.settings && typeof raw.settings === "object") {
+      for (const k of Object.keys(s.settings)) if (typeof raw.settings[k] === "boolean") s.settings[k] = raw.settings[k];
+    }
+    s.setAt = num(raw.setAt, 0);
+    if (Array.isArray(raw.sel)) s.sel = raw.sel.filter((x) => typeof x === "string");
+    s.selAt = num(raw.selAt, 0);
+    if (Array.isArray(raw.custom)) {
+      s.custom = raw.custom
+        .filter((u) => u && typeof u.id === "string" && Array.isArray(u.words))
+        .map((u) => ({
+          id: u.id, book: String(u.book || ""), name: String(u.name || ""), at: num(u.at, 0),
+          words: u.words.filter(Array.isArray).map((w) => [String(w[0] || ""), String(w[1] || ""), String(w[2] || "")]),
+        }));
+    }
+    if (raw.tomb && typeof raw.tomb === "object") {
+      for (const [k, v] of Object.entries(raw.tomb)) if (Number.isFinite(+v)) s.tomb[k] = +v;
+    }
+    if (raw.days && typeof raw.days === "object") {
+      for (const [k, v] of Object.entries(raw.days)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Number.isFinite(+v)) s.days[k] = +v;
+    }
+    return s;
+  }
+  // Combine two copies of the saved state (this browser and the account copy).
+  // Each word keeps whichever copy was answered most recently.
+  function merge(a, b) {
+    const out = blankState();
+    for (const id of new Set(Object.keys(a.cards).concat(Object.keys(b.cards)))) {
+      const x = a.cards[id], y = b.cards[id];
+      out.cards[id] = !x ? y : !y ? x : y.t > x.t ? y : x;
+    }
+    const lw = b.Lat > a.Lat ? b : a;
+    out.L = lw.L; out.Lat = lw.Lat; out.times = { ttfk: lw.times.ttfk.slice(), tot: lw.times.tot.slice() };
+    const sw = b.setAt > a.setAt ? b : a;
+    out.settings = Object.assign({}, sw.settings); out.setAt = sw.setAt;
+    const selw = b.selAt > a.selAt ? b : a;
+    out.sel = selw.sel.slice(); out.selAt = selw.selAt;
+    out.tomb = Object.assign({}, a.tomb);
+    for (const [k, v] of Object.entries(b.tomb)) out.tomb[k] = Math.max(out.tomb[k] || 0, v);
+    const units = new Map();
+    for (const u of a.custom.concat(b.custom)) {
+      const prev = units.get(u.id);
+      if (!prev || u.at > prev.at) units.set(u.id, u);
+    }
+    out.custom = Array.from(units.values()).filter((u) => !(out.tomb[u.id] >= u.at));
+    out.days = Object.assign({}, a.days);
+    for (const [k, v] of Object.entries(b.days)) out.days[k] = Math.max(out.days[k] || 0, v);
+    return out;
+  }
+
+  const Local = {
+    load() {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        return raw ? sanitize(JSON.parse(raw)) : null;
+      } catch (e) { return null; }
+    },
+    save() {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: the account copy still works */ }
+    },
+  };
+
+  // Account copy: one private document per person, when the page runs inside Claude.
+  const Cloud = {
+    ref: null, mode: "local", timer: 0, busy: false, dirty: false, again: false, lastWrite: 0, hiddenAt: 0,
+    async connect() {
+      const c = window.claude;
+      if (!c || typeof c.use !== "function") return;
+      try {
+        const [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+        if (!db || !user) return;
+        const uid = await user.id();
+        if (!uid) return;
+        this.ref = db.doc("data/users/" + uid + "/vocab-sprint");
+        await this.pull();
+        this.mode = "cloud";
+        this.schedule(1500);
+      } catch (e) {
+        this.ref = null;
+        this.mode = "local";
+      }
+      renderSync();
+    },
+    async pull() {
+      if (!this.ref) return;
+      const snap = await this.ref.get();
+      if (snap.exists) {
+        S = merge(S, sanitize(snap.data()));
+        Local.save();
+        afterMerge();
+      }
+    },
+    schedule(delay) {
+      if (!this.ref) return;
+      this.dirty = true;
+      if (this.timer) return;
+      const wait = delay != null ? delay : Math.max(1500, 8000 - (Date.now() - this.lastWrite));
+      this.timer = setTimeout(() => { this.timer = 0; this.flush(); }, wait);
+    },
+    async flush() {
+      if (this.timer) { clearTimeout(this.timer); this.timer = 0; }
+      if (!this.ref || !this.dirty) return;
+      if (this.busy) { this.again = true; return; }
+      this.busy = true;
+      this.dirty = false;
+      let retry = false;
+      try {
+        await this.ref.set(JSON.parse(JSON.stringify(S)));
+        this.lastWrite = Date.now();
+        this.mode = "cloud";
+      } catch (e) {
+        const code = e && e.code;
+        if (code === "unavailable" || code === "resource_exhausted") { this.dirty = true; retry = true; }
+        else { this.ref = null; this.mode = code === "quota_exceeded" ? "full" : "local"; }
+      } finally {
+        this.busy = false;
+        renderSync();
+        if (this.ref && (this.dirty || this.again)) {
+          this.again = false;
+          this.schedule(retry ? 4000 + Math.random() * 4000 : undefined);
+        }
+      }
+    },
+  };
+
+  let S = Local.load() || blankState();
+  function persist() { Local.save(); Cloud.schedule(); }
+  function ensureSelection() {
+    const ids = new Set(allUnits().map((u) => u.id));
+    S.sel = S.sel.filter((id) => ids.has(id));
+    if (!S.sel.length && ids.size) S.sel = [allUnits()[0].id];
+  }
+  function afterMerge() {
+    ensureSelection();
+    if (!$("home").hidden) renderHome();
+    if (!$("practice").hidden && P.ses) renderDrillBar();
+  }
+
+  /* ---------- sound, speech, confetti ---------- */
+  const Sound = {
+    ctx: null,
+    ready() {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try { this.ctx = new AC(); } catch (e) { return null; }
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      return this.ctx;
+    },
+    note(freq, at, dur, type, vol, to) {
+      const ctx = this.ctx, t0 = ctx.currentTime + at;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0);
+      o.stop(t0 + dur + 0.03);
+    },
+    play(kind) {
+      if (!S.settings.sound || !this.ready()) return;
+      try {
+        if (kind === "good") { this.note(784, 0, 0.09); this.note(1175, 0.07, 0.13); }
+        else if (kind === "bad") this.note(220, 0, 0.24, "triangle", 0.09, 150);
+        else if (kind === "tick") this.note(660, 0, 0.07, "sine", 0.05);
+        else if (kind === "new") this.note(523, 0, 0.14, "sine", 0.05);
+        else if (kind === "streak") [523, 659, 784, 1047].forEach((f, i) => this.note(f, i * 0.07, 0.15));
+      } catch (e) { /* audio is optional */ }
+    },
+  };
+  const canSpeak = "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
+  function speak(text) {
+    if (!canSpeak) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = 0.92;
+      speechSynthesis.speak(u);
+    } catch (e) { /* speech is optional */ }
+  }
+  const Confetti = {
+    parts: [], running: false,
+    burst() {
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const cv = $("confetti");
+      const W = window.innerWidth, H = window.innerHeight;
+      const css = getComputedStyle(document.documentElement);
+      const colors = ["--accent", "--good", "--warn", "--margin", "--lv2"].map((v) => css.getPropertyValue(v).trim() || "#888");
+      for (let i = 0; i < 90; i++) {
+        this.parts.push({
+          x: W / 2 + (Math.random() - 0.5) * W * 0.3, y: H * 0.38,
+          vx: (Math.random() - 0.5) * 10, vy: -Math.random() * 9 - 4,
+          r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+          w: 5 + Math.random() * 5, h: 8 + Math.random() * 6,
+          c: colors[(Math.random() * colors.length) | 0], born: performance.now(),
+        });
+      }
+      if (this.running) return;
+      const ctx = cv.getContext("2d");
+      if (!ctx) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = W * dpr; cv.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cv.hidden = false;
+      this.running = true;
+      const frame = (now) => {
+        ctx.clearRect(0, 0, W, H);
+        this.parts = this.parts.filter((p) => now - p.born < 1600 && p.y < H + 40);
+        for (const p of this.parts) {
+          p.vy += 0.3; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.r);
+          ctx.globalAlpha = Math.max(0, 1 - (now - p.born) / 1600);
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+        if (this.parts.length) requestAnimationFrame(frame);
+        else { this.running = false; cv.hidden = true; }
+      };
+      requestAnimationFrame(frame);
+    },
+  };
+
+  /* ---------- screens and shared bits ---------- */
+  const SCREENS = ["home", "practice", "summary", "editor"];
+  function show(name) {
+    for (const s of SCREENS) $(s).hidden = s !== name;
+    window.scrollTo(0, 0);
+  }
+  function levelCounts(cards) {
+    const counts = [0, 0, 0, 0, 0];
+    for (const c of cards) counts[Engine.level(S.cards[c.id])]++;
+    return counts;
+  }
+  function fillMeter(el, counts, total) {
+    el.textContent = "";
+    for (let lv = 4; lv >= 1; lv--) {
+      if (!counts[lv]) continue;
+      const seg = document.createElement("span");
+      seg.className = "seg lv" + lv;
+      seg.style.width = (100 * counts[lv]) / Math.max(1, total) + "%";
+      el.appendChild(seg);
+    }
+    el.setAttribute("aria-label", Engine.LEVELS.map((L, i) => counts[i] + " " + L.name.toLowerCase()).join(", "));
+  }
+  function dueNow(cards, now) {
+    return cards.filter((c) => S.cards[c.id] && Engine.recall(S.cards[c.id], now, S.L) < Engine.R_DUE).length;
+  }
+  // When a worthwhile batch (a quarter of the words seen so far) will be due.
+  function nextBatch(cards) {
+    const times = cards.filter((c) => S.cards[c.id]).map((c) => Engine.dueAt(S.cards[c.id], S.L)).sort((a, b) => a - b);
+    if (!times.length) return null;
+    const k = Math.max(1, Math.ceil(times.length / 4));
+    const at = times[k - 1];
+    return { at, count: times.filter((t) => t <= at).length };
+  }
+  function renderSync() {
+    const el = $("sync");
+    el.className = "sync" + (Cloud.mode === "cloud" ? " cloud" : "");
+    el.textContent = Cloud.mode === "cloud"
+      ? "Progress syncs to your Claude account, so it follows you to other devices."
+      : Cloud.mode === "full"
+        ? "Your account copy is full. Progress is still saved in this browser."
+        : "Progress is saved in this browser.";
+  }
+
+  /* ---------- home ---------- */
+  function renderHome() {
+    const units = selectedUnits();
+    const cards = cardsOf(units);
+    const counts = levelCounts(cards);
+    const now = Date.now();
+    const seen = cards.length - counts[0];
+    $("launch-book").textContent = !units.length ? "Nothing selected" : units.length === 1 ? units[0].book || "Your unit" : units.map((u) => u.name).join(" · ");
+    $("launch-title").textContent = units.length ? selectionTitle(units) : "Pick a unit below";
+    const bits = [cards.length + " words"];
+    if (seen === 0 && cards.length) bits.push("not started");
+    else if (cards.length) {
+      const due = dueNow(cards, now);
+      if (due) bits.push(due + " due now");
+      else {
+        const nb = nextBatch(cards);
+        if (counts[0]) bits.push(counts[0] + " new");
+        else if (nb) bits.push("next review " + fmtIn(nb.at - now));
+      }
+    }
+    const done = S.days[today()] || 0;
+    if (done) bits.push(done + " answered today");
+    $("launch-meta").textContent = units.length ? bits.join(" · ") : "Tick at least one unit to practice.";
+    fillMeter($("launch-meter"), counts, cards.length);
+    $("launch-legend").innerHTML = Engine.LEVELS.map((L, i) => '<li><i class="sw lv' + i + '"></i>' + L.name + " <b>" + counts[i] + "</b></li>").join("");
+    $("start").disabled = !cards.length;
+    $("start").textContent = seen ? "Continue practice" : "Start practice";
+
+    const list = allUnits();
+    $("unit-list").innerHTML = list.length
+      ? list.map((u) => {
+        const id = "u-" + u.id;
+        const n = cardsOf([u]).length;
+        return '<li class="unit">' +
+          '<input type="checkbox" id="' + esc(id) + '" data-unit="' + esc(u.id) + '"' + (S.sel.includes(u.id) ? " checked" : "") + ">" +
+          '<label for="' + esc(id) + '" class="unit-text"><span class="unit-name">' + esc(u.name) + "</span>" +
+          '<span class="unit-book">' + esc(u.book || "Added by you") + " · " + n + (n === 1 ? "\u00a0word" : "\u00a0words") + "</span></label>" +
+          (u.builtin ? "<span></span>" : '<button type="button" class="btn ghost tiny" data-edit="' + esc(u.id) + '">Edit</button>') +
+          '<div class="meter thin" data-meter="' + esc(u.id) + '"></div></li>';
+      }).join("")
+      : '<li class="empty-note">No units yet. Add one to get started.</li>';
+    for (const el of $("unit-list").querySelectorAll("[data-meter]")) {
+      const u = list.find((x) => x.id === el.dataset.meter);
+      const uc = cardsOf([u]);
+      fillMeter(el, levelCounts(uc), uc.length);
+    }
+
+    $("words-count").textContent = " (" + cards.length + ")";
+    $("word-list").innerHTML = cards.length
+      ? cards.map((c) => {
+        const st = S.cards[c.id];
+        const lv = Engine.level(st);
+        const pct = st ? Math.round(100 * Engine.recall(st, now, S.L)) + "%" : "";
+        return '<li class="word-row"><p class="wr-head"><span class="wr-word">' + esc(c.word) + "</span>" +
+          (c.pos ? '<span class="wr-pos">' + esc(c.pos) + "</span>" : "") + "</p>" +
+          '<span class="chip"><i class="sw lv' + lv + '"></i>' + Engine.LEVELS[lv].name +
+          (pct ? ' <span class="pct" title="Estimated chance you recall it right now">' + pct + "</span>" : "") + "</span>" +
+          '<p class="wr-def">' + esc(c.def) + "</p></li>";
+      }).join("")
+      : '<li class="empty-note">Tick a unit to see its words.</li>';
+
+    $("set-sound").checked = S.settings.sound;
+    $("set-speak").checked = S.settings.speak;
+    $("set-speak-row").hidden = !canSpeak;
+    $("set-lenient").checked = S.settings.lenient;
+    $("reset").disabled = !seen;
+    disarm($("reset"), "Reset progress for the selected units");
+    renderSync();
+  }
+
+  // Two-tap confirmation for destructive buttons (the viewer cannot show confirm dialogs).
+  function armOrRun(btn, armedLabel, restLabel, run) {
+    if (btn.classList.contains("armed")) { disarm(btn, restLabel); run(); return; }
+    btn.classList.add("armed");
+    btn.textContent = armedLabel;
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => disarm(btn, restLabel), 4000);
+  }
+  function disarm(btn, label) {
+    clearTimeout(btn._t);
+    btn.classList.remove("armed");
+    btn.textContent = label;
+  }
+
+  $("unit-list").addEventListener("change", (e) => {
+    const box = e.target.closest("input[data-unit]");
+    if (!box) return;
+    const on = new Set(S.sel);
+    if (box.checked) on.add(box.dataset.unit); else on.delete(box.dataset.unit);
+    S.sel = allUnits().map((u) => u.id).filter((id) => on.has(id));
+    S.selAt = Date.now();
+    persist();
+    renderHome();
+    const again = $("u-" + box.dataset.unit);
+    if (again) again.focus();
+  });
+  $("unit-list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-edit]");
+    if (b) openEditor(b.dataset.edit);
+  });
+  $("start").addEventListener("click", startPractice);
+  $("add-unit").addEventListener("click", () => openEditor(null));
+  for (const key of ["sound", "speak", "lenient"]) {
+    $("set-" + key).addEventListener("change", (e) => {
+      S.settings[key] = e.target.checked;
+      S.setAt = Date.now();
+      persist();
+      if (key === "sound" && e.target.checked) { Sound.ready(); Sound.play("good"); }
+    });
+  }
+  $("reset").addEventListener("click", (e) => {
+    armOrRun(e.currentTarget, "Tap again to erase progress", "Reset progress for the selected units", () => {
+      for (const c of cardsOf(selectedUnits())) delete S.cards[c.id];
+      persist();
+      renderHome();
+    });
+  });
+
+  /* ---------- practice ---------- */
+  const input = $("answer");
+  const P = {
+    cards: [], card: null, phase: "idle", isNew: false, kind: "",
+    t0: 0, firstKey: 0, hints: 0, timer: 0, copyT0: 0, wasHidden: false, ses: null, multi: false,
+  };
+
+  function startPractice() {
+    const units = selectedUnits();
+    P.cards = cardsOf(units);
+    if (!P.cards.length) return;
+    P.multi = units.length > 1;
+    P.ses = {
+      start: Date.now(), shown: [], recent: [], reps: 0, correct: 0, streak: 0, best: 0, activeMs: 0,
+      before: Object.fromEntries(P.cards.map((c) => [c.id, Engine.level(S.cards[c.id])])),
+      missed: {}, caughtUpShown: false,
+    };
+    if (S.settings.sound) Sound.ready();
+    show("practice");
+    $("caught").hidden = true;
+    $("card").hidden = false;
+    renderDrillBar();
+    nextCard();
+  }
+
+  function renderDrillBar() {
+    const counts = levelCounts(P.cards);
+    const learned = counts[2] + counts[3] + counts[4];
+    $("drill-title").textContent = selectionTitle(selectedUnits());
+    $("drill-count").textContent = learned + " of " + P.cards.length + " learned";
+    fillMeter($("drill-meter"), counts, P.cards.length);
+    const ses = P.ses;
+    const pct = ses.reps ? Math.round((100 * ses.correct) / ses.reps) + "%" : "–";
+    $("drill-stats").textContent = ses.reps + " answered · " + pct + " correct · streak " + ses.streak;
+    const m = $("mute");
+    m.innerHTML = S.settings.sound ? ICON.speaker : ICON.muted;
+    m.setAttribute("aria-pressed", String(S.settings.sound));
+    m.title = S.settings.sound ? "Sound on" : "Sound off";
+  }
+
+  function nextCard() {
+    clearTimeout(P.timer);
+    const pk = Engine.pick(P.cards, S.cards, S.L, P.ses, Date.now());
+    if (pk.caughtUp && !P.ses.caughtUpShown) {
+      P.ses.caughtUpShown = true;
+      showCaughtUp();
+      return;
+    }
+    const c = pk.card;
+    P.card = c;
+    P.kind = pk.kind;
+    P.isNew = !S.cards[c.id];
+    P.phase = "ask";
+    P.hints = 0;
+    P.firstKey = 0;
+    P.wasHidden = document.visibilityState === "hidden";
+    const tag = $("c-tag");
+    tag.textContent = P.isNew ? "New word" : "Review";
+    tag.className = "tag" + (P.isNew ? " new" : "");
+    $("c-unit").textContent = P.multi ? c.unitName : "";
+    $("c-pos").textContent = c.pos ? "(" + c.pos + ") " : "";
+    $("c-text").textContent = c.def;
+    const def = $("c-def");
+    def.classList.remove("enter");
+    void def.offsetWidth;
+    def.classList.add("enter");
+    $("feedback").innerHTML = "";
+    $("blank").className = "blank";
+    $("hint-btn").hidden = false;
+    $("hint-btn").disabled = false;
+    $("idk-btn").hidden = false;
+    $("check-btn").textContent = "Check";
+    input.value = "";
+    updateTrace();
+    focusInput();
+    P.t0 = performance.now();
+  }
+
+  function focusInput() {
+    if (document.activeElement !== input) {
+      try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+    }
+  }
+
+  function tracePattern() {
+    if (!P.card) return "";
+    const letters = Array.from(P.card.word);
+    if (P.phase === "copy" || P.phase === "done") return letters.join("");
+    if (P.phase === "ask" && P.hints) {
+      let shown = 0;
+      return letters.map((ch) => (ch === " " ? " " : shown++ < P.hints ? ch : "·")).join("");
+    }
+    return "";
+  }
+  function updateTrace() {
+    const pat = Array.from(tracePattern());
+    const typed = Array.from(input.value).length;
+    $("trace").textContent = pat.map((ch, i) => (i < typed ? " " : ch)).join("");
+    input.placeholder = pat.length || P.phase !== "ask" ? "" : P.isNew ? "Type it, or press Enter to see it" : "Type the word";
+  }
+
+  function giveHint() {
+    if (P.phase !== "ask") return;
+    const letters = Array.from(P.card.word).filter((ch) => ch !== " ").length;
+    if (P.hints >= letters - 1) return;
+    P.hints++;
+    if (P.hints >= letters - 1) $("hint-btn").disabled = true;
+    updateTrace();
+    focusInput();
+  }
+
+  function judge(raw, card, pool) {
+    const a = norm(raw);
+    if (!a) return { kind: "blank" };
+    const forms = [card.word].concat(card.alts).map(norm);
+    if (forms.includes(a)) return { kind: "exact" };
+    const other = pool.find((c) => c.id !== card.id && [c.word].concat(c.alts).map(norm).includes(a));
+    if (other) return { kind: "other", other };
+    if (forms.some((f) => isOtherForm(a, f))) return { kind: "form" };
+    const len = forms[0].length;
+    const dist = Math.min.apply(null, forms.map((f) => osa(a, f)));
+    if ((dist === 1 && len >= 4) || (dist === 2 && len >= 8)) return { kind: "almost" };
+    return { kind: "wrong" };
+  }
+  function matches(raw, card) {
+    const a = norm(raw);
+    return [card.word].concat(card.alts).some((f) => norm(f) === a);
+  }
+
+  function median(arr) {
+    if (arr.length < 6) return null;
+    const s = arr.slice().sort((x, y) => x - y);
+    return s[s.length >> 1];
+  }
+  // Grades a correct answer by speed against this learner's own typical times.
+  function fluency(ttfk, total, len) {
+    const mT = median(S.times.ttfk) || 2600;
+    const mTot = median(S.times.tot) || 5200;
+    if (ttfk > Math.max(2.2 * mT, mT + 4000) || total - ttfk > 2500 + 450 * len) return G.HARD;
+    if (ttfk < 0.65 * mT && total < 0.85 * mTot) return G.EASY;
+    return G.GOOD;
+  }
+  function pushTime(key, v) {
+    const arr = S.times[key];
+    arr.push(Math.round(v));
+    if (arr.length > 30) arr.splice(0, arr.length - 30);
+  }
+  function bumpDay() {
+    const k = today();
+    S.days[k] = (S.days[k] || 0) + 1;
+    const keys = Object.keys(S.days).sort();
+    while (keys.length > 120) delete S.days[keys.shift()];
+  }
+
+  function submit() {
+    if (P.phase === "correct") { nextCard(); return; }
+    if (P.phase === "copy") {
+      if (matches(input.value, P.card)) finishCopy();
+      else nudgeCopy();
+      return;
+    }
+    if (P.phase !== "ask") return;
+    const now = Date.now();
+    const total = performance.now() - P.t0;
+    const ttfk = P.firstKey ? P.firstKey - P.t0 : total;
+    const c = P.card;
+    const raw = input.value;
+    const res = judge(raw, c, P.cards);
+    const len = norm(c.word).replace(/ /g, "").length;
+    const heavy = P.hints >= Math.max(2, Math.ceil(len / 3));
+    const timed = P.wasHidden ? G.GOOD : fluency(ttfk, total, len);
+    let grade = G.AGAIN, ok = false, typo = false;
+    if (res.kind === "exact") {
+      ok = true;
+      grade = heavy ? G.AGAIN : P.hints ? G.HARD : timed;
+    } else if (res.kind === "almost" && S.settings.lenient) {
+      ok = true;
+      typo = true;
+      grade = P.hints ? G.HARD : Math.min(G.GOOD, timed);
+    } else if (res.kind === "almost" || res.kind === "form") {
+      grade = G.ALMOST;
+    }
+
+    const prev = S.cards[c.id];
+    const before = Engine.level(prev);
+    const out = Engine.review(prev, grade, now, S.L);
+    S.cards[c.id] = out.st;
+    if (prev) {
+      S.L = Engine.calibrate(S.L, out.R, grade);
+      S.Lat = now;
+      P.ses.recent.push(grade >= G.HARD ? 1 : 0);
+    }
+    if (res.kind === "exact" && !P.hints && !P.wasHidden) { pushTime("ttfk", ttfk); pushTime("tot", total); }
+    const after = Engine.level(out.st);
+    const credit = ok && !heavy;
+    const ses = P.ses;
+    ses.shown.push(c.id);
+    ses.reps++;
+    ses.activeMs += Math.min(total, 45000);
+    if (credit) { ses.correct++; ses.streak++; ses.best = Math.max(ses.best, ses.streak); }
+    else { ses.streak = 0; if (!ok) ses.missed[c.id] = (ses.missed[c.id] || 0) + 1; }
+    bumpDay();
+    persist();
+    renderDrillBar();
+    if (ok) showCorrect(grade, before, after, typo, heavy);
+    else showMiss(res, raw);
+  }
+
+  function showCorrect(grade, before, after, typo, heavy) {
+    P.phase = "correct";
+    const c = P.card;
+    $("blank").className = "blank good";
+    $("hint-btn").hidden = true;
+    $("idk-btn").hidden = true;
+    $("check-btn").textContent = "Next";
+    let note = "";
+    if (typo) note = "Counted as correct. It's spelled <b>" + esc(c.word) + "</b>.";
+    else if (heavy) note = "You needed most of the letters, so it will come back soon.";
+    else if (P.isNew && grade >= G.GOOD) note = "You already knew this one.";
+    else if (grade === G.EASY) note = "Quick.";
+    else if (grade === G.HARD) note = P.hints ? "With a hint, so it will come back a little sooner." : "That took a moment, so it will come back a little sooner.";
+    const up = after > before && before > 0
+      ? '<span class="lvl-up"><i class="sw lv' + after + '"></i>Now ' + Engine.LEVELS[after].name.toLowerCase() + "</span>"
+      : "";
+    $("feedback").innerHTML = '<div class="fb good"><p class="fb-title">' + ICON.check + "Correct " + up + "</p>" +
+      (note ? '<p class="fb-note">' + note + "</p>" : "") + "</div>";
+    const milestone = P.ses.streak > 0 && P.ses.streak % 10 === 0;
+    Sound.play(milestone ? "streak" : "good");
+    if (milestone) Confetti.burst();
+    if (S.settings.speak) speak(c.word);
+    P.timer = setTimeout(nextCard, note || up ? 1300 : 650);
+  }
+
+  function attemptMarkup(raw, word) {
+    const a = Array.from(raw.trim()), b = Array.from(word);
+    const m = lcs(a.map((ch) => ch.toLowerCase()), b.map((ch) => ch.toLowerCase()));
+    const close = m.len >= Math.ceil(b.length / 2);
+    return {
+      close,
+      word: close ? b.map((ch, i) => (m.kb.has(i) ? esc(ch) : "<mark>" + esc(ch) + "</mark>")).join("") : esc(word),
+      yours: close ? a.map((ch, i) => (m.ka.has(i) ? esc(ch) : "<del>" + esc(ch) + "</del>")).join("") : esc(raw.trim()),
+    };
+  }
+
+  function showMiss(res, raw) {
+    P.phase = "copy";
+    P.copyT0 = performance.now();
+    const c = P.card;
+    let cls = "bad", title = "Not quite", extra = "";
+    let wordHTML = esc(c.word);
+    if (res.kind === "blank") {
+      cls = P.isNew ? "new" : "bad";
+      title = P.isNew ? "New word" : "Here it is";
+    } else if (res.kind === "other") {
+      title = "That's a different word";
+      extra = '<p class="fb-note"><b>' + esc(res.other.word) + "</b> means “" + esc(res.other.def) + ".”</p>";
+    } else if (res.kind === "form") {
+      cls = "warn";
+      title = "Right word, different form";
+      extra = '<p class="fb-note">You typed <b>' + esc(raw.trim()) + "</b>. Type the form that matches the definition.</p>";
+    } else {
+      const mk = attemptMarkup(raw, c.word);
+      if (res.kind === "almost") { cls = "warn"; title = "Close. Check the spelling"; }
+      wordHTML = mk.word;
+      extra = '<p class="fb-yours">You typed <span class="yours">' + mk.yours + "</span></p>";
+    }
+    const sp = canSpeak ? '<button type="button" class="speak" id="speak-btn" aria-label="Say the word aloud">' + ICON.speaker + "</button>" : "";
+    $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + title + "</p>" +
+      '<p class="fb-word"><span>' + wordHTML + "</span>" + sp + "</p>" + extra +
+      '<p class="fb-instr" id="fb-instr">Type it to continue.</p></div>';
+    $("blank").className = "blank" + (cls === "new" ? "" : " " + cls);
+    $("hint-btn").hidden = true;
+    $("idk-btn").hidden = true;
+    $("check-btn").textContent = "Check";
+    input.value = "";
+    updateTrace();
+    focusInput();
+    Sound.play(cls === "new" ? "new" : "bad");
+    if (S.settings.speak) speak(c.word);
+  }
+
+  function finishCopy() {
+    if (P.phase !== "copy") return;
+    P.phase = "done";
+    P.ses.activeMs += Math.min(performance.now() - P.copyT0, 30000);
+    $("blank").className = "blank good";
+    updateTrace();
+    Sound.play("tick");
+    P.timer = setTimeout(nextCard, 280);
+  }
+  function nudgeCopy() {
+    const b = $("blank");
+    b.classList.remove("shake");
+    void b.offsetWidth;
+    b.classList.add("shake");
+    const instr = $("fb-instr");
+    if (instr) instr.textContent = "Type it exactly as shown: " + P.card.word;
+  }
+
+  function showCaughtUp() {
+    P.phase = "caught";
+    const nb = nextBatch(P.cards);
+    $("caught-when").textContent = nb ? fmtIn(nb.at - Date.now()) : "later";
+    $("card").hidden = true;
+    $("caught").hidden = false;
+    $("caught-keep").focus();
+  }
+
+  function endSession() {
+    clearTimeout(P.timer);
+    P.phase = "idle";
+    Cloud.flush();
+    if (!P.ses || !P.ses.reps) { goHome(); return; }
+    renderSummary();
+    show("summary");
+    $("sum-title").focus();
+  }
+  function goHome() {
+    renderHome();
+    show("home");
+  }
+
+  // Enter is handled here rather than by the form, so it still works while typing is paused.
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) {
+      e.preventDefault();
+      submit();
+    }
+  });
+  input.addEventListener("beforeinput", (e) => {
+    if (P.phase !== "ask" && P.phase !== "copy") { e.preventDefault(); return; }
+    if (e.data && e.data.includes("?")) {
+      e.preventDefault();
+      giveHint();
+    }
+  });
+  input.addEventListener("input", () => {
+    if (input.value.includes("?")) {
+      input.value = input.value.replace(/\?/g, "");
+      giveHint();
+    }
+    if (P.phase === "ask" && !P.firstKey && input.value) P.firstKey = performance.now();
+    updateTrace();
+    if (P.phase === "copy" && matches(input.value, P.card)) finishCopy();
+  });
+  $("answer-form").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+  // Keep the on-screen keyboard up: these buttons must not take focus from the answer line.
+  for (const id of ["hint-btn", "idk-btn", "check-btn", "mute"]) {
+    $(id).addEventListener("pointerdown", (e) => { if (P.phase !== "idle") e.preventDefault(); });
+  }
+  $("hint-btn").addEventListener("click", giveHint);
+  $("idk-btn").addEventListener("click", () => {
+    if (P.phase !== "ask") return;
+    input.value = "";
+    submit();
+  });
+  $("mute").addEventListener("click", () => {
+    S.settings.sound = !S.settings.sound;
+    S.setAt = Date.now();
+    persist();
+    renderDrillBar();
+    if (S.settings.sound) Sound.play("good");
+    focusInput();
+  });
+  $("feedback").addEventListener("pointerdown", (e) => { if (e.target.closest("#speak-btn")) e.preventDefault(); });
+  $("feedback").addEventListener("click", (e) => {
+    if (e.target.closest("#speak-btn") && P.card) { speak(P.card.word); focusInput(); }
+  });
+  // Tapping anywhere on the card brings the keyboard back if it was dismissed.
+  $("card").addEventListener("click", (e) => { if (!e.target.closest("button") && P.phase !== "idle") focusInput(); });
+  $("end").addEventListener("click", endSession);
+  $("caught-keep").addEventListener("click", () => {
+    $("caught").hidden = true;
+    $("card").hidden = false;
+    nextCard();
+  });
+  $("caught-done").addEventListener("click", endSession);
+
+  /* ---------- summary ---------- */
+  function renderSummary() {
+    const ses = P.ses;
+    const mins = Math.max(1, Math.round(ses.activeMs / 60000));
+    const pct = Math.round((100 * ses.correct) / ses.reps);
+    // "Moved up" means reaching Familiar or better; first sightings are counted separately.
+    const up = P.cards.filter((c) => {
+      const lv = Engine.level(S.cards[c.id]);
+      return lv > ses.before[c.id] && lv >= 2;
+    });
+    const met = P.cards.filter((c) => ses.before[c.id] === 0 && S.cards[c.id]).length;
+    const metText = met ? "You met " + met + (met === 1 ? " new word" : " new words") : "";
+    $("sum-title").textContent = up.length ? up.length + (up.length === 1 ? " word moved up" : " words moved up") : metText || "Session done";
+    const nb = nextBatch(P.cards);
+    const now = Date.now();
+    const lead = up.length && met ? metText + ". " : "";
+    $("sum-next").textContent = lead + (nb
+      ? nb.at - now <= 30000
+        ? "Some words are already due again, so another short round now will help them stick."
+        : "Come back " + fmtIn(nb.at - now) + ", when " + nb.count + (nb.count === 1 ? " word is" : " words are") + " due. Spacing practice out like that makes words stick."
+      : "");
+    $("sum-stats").innerHTML = [["Answers", ses.reps], ["Correct", pct + "%"], ["Best streak", ses.best], [mins === 1 ? "Minute" : "Minutes", mins]]
+      .map(([k, v]) => '<div class="stat"><b>' + v + "</b><span>" + k + "</span></div>").join("");
+    $("sum-up-wrap").hidden = !up.length;
+    $("sum-up").innerHTML = up.map((c) => {
+      const lv = Engine.level(S.cards[c.id]);
+      return '<li><i class="sw lv' + lv + '"></i><b>' + esc(c.word) + "</b>" + Engine.LEVELS[lv].name + "</li>";
+    }).join("");
+    const missed = Object.entries(ses.missed).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    $("sum-miss-wrap").hidden = !missed.length;
+    $("sum-miss").innerHTML = missed.map(([id, n]) => {
+      const c = P.cards.find((x) => x.id === id);
+      return c ? "<li><b>" + esc(c.word) + "</b>" + (n > 1 ? "missed " + n + " times" : "missed once") + "</li>" : "";
+    }).join("");
+  }
+  $("sum-again").addEventListener("click", startPractice);
+  $("sum-home").addEventListener("click", goHome);
+
+  /* ---------- unit editor ---------- */
+  let editingId = null;
+  const POS_RE = /^(n|v|adj|adv|prep|conj|pron|interj|int)\.?$/i;
+  // Reads lines like "adversary (ad' var ser e) (n.) an enemy, opponent; ..." or "adversary - an enemy".
+  function parseUnitText(text) {
+    const words = [], problems = [], seen = new Set();
+    String(text || "").split(/\r?\n/).forEach((line0, i) => {
+      let line = line0.trim().replace(/^\d+\s*[.)]\s*/, "");
+      if (!line) return;
+      let word = "", rest = "";
+      const sep = line.match(/^(.+?)\s*(?:\t|\||\s[-–—]\s|:\s)\s*(.+)$/);
+      if (sep) { word = sep[1]; rest = sep[2]; }
+      else if (line.includes("(") && line.indexOf("(") > 0 && line.slice(0, line.indexOf("(")).trim().split(/\s+/).length <= 3) {
+        word = line.slice(0, line.indexOf("(")); rest = line.slice(line.indexOf("("));
+      } else {
+        const m = line.match(/^(\S+)\s+(.+)$/);
+        if (m) { word = m[1]; rest = m[2]; }
+      }
+      word = word.trim().replace(/^["'“‘]+|["'”’]+$/g, "");
+      let pos = "", m;
+      while ((m = rest.match(/^\(([^)]*)\)\s*/))) {
+        if (POS_RE.test(m[1].trim())) pos = cleanPos(m[1]);
+        rest = rest.slice(m[0].length);
+      }
+      if (!pos && (m = rest.match(/^(n|v|adj|adv|prep|conj|pron|interj)\.\s+/i))) { pos = cleanPos(m[1]); rest = rest.slice(m[0].length); }
+      rest = rest.replace(/^[|:\-–—\s]+/, "");
+      const def = firstDef(rest);
+      if (!word || !def) { problems.push("Line " + (i + 1) + ": couldn't find both a word and a definition."); return; }
+      if (seen.has(norm(word))) { problems.push("Line " + (i + 1) + ": “" + word + "” is already listed."); return; }
+      seen.add(norm(word));
+      words.push({ word, pos, def });
+    });
+    return { words, problems };
+  }
+  function suggestName(book) {
+    let max = 0;
+    for (const u of allUnits()) {
+      if (book && u.book !== book) continue;
+      const m = u.name.match(/(\d+)\s*$/);
+      if (m) max = Math.max(max, +m[1]);
+    }
+    return max ? "Unit " + (max + 1) : "";
+  }
+  function openEditor(id) {
+    editingId = id || null;
+    const u = id ? S.custom.find((x) => x.id === id) : null;
+    $("ed-title").textContent = u ? "Edit unit" : "Add a unit";
+    const book = u ? u.book : (BUILTIN[0] && BUILTIN[0].book) || "";
+    $("ed-book").value = book;
+    $("ed-name").value = u ? u.name : suggestName(book);
+    $("ed-words").value = u ? u.words.map((w) => w[0] + (w[1] ? " (" + w[1] + ")" : "") + " " + w[2]).join("\n") : "";
+    $("ed-delete").hidden = !u;
+    disarm($("ed-delete"), "Delete unit");
+    renderPreview();
+    show("editor");
+    $("ed-title").focus();
+  }
+  function renderPreview() {
+    const { words, problems } = parseUnitText($("ed-words").value);
+    const name = $("ed-name").value.trim();
+    $("ed-save").disabled = !words.length || !name;
+    $("ed-preview").innerHTML = !words.length && !problems.length
+      ? '<p class="preview-head">Preview</p><p class="field-help">Paste or type the words above and they will show up here.</p>'
+      : '<p class="preview-head">' + words.length + (words.length === 1 ? " word" : " words") + " ready</p>" +
+        (words.length ? "<ol>" + words.map((w) => "<li><b>" + esc(w.word) + "</b> " + (w.pos ? "<i>" + esc(w.pos) + "</i> " : "") + esc(w.def) + "</li>").join("") + "</ol>" : "") +
+        (problems.length ? '<div class="problems">' + problems.map((p) => "<p>" + esc(p) + "</p>").join("") + "</div>" : "") +
+        (!name ? '<p class="problems">Give the unit a name.</p>' : "");
+  }
+  for (const id of ["ed-words", "ed-name"]) $(id).addEventListener("input", renderPreview);
+  $("ed-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const { words } = parseUnitText($("ed-words").value);
+    const name = $("ed-name").value.trim();
+    if (!words.length || !name) return;
+    const now = Date.now();
+    const unit = {
+      id: editingId || "c-" + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      book: $("ed-book").value.trim(),
+      name,
+      at: now,
+      words: words.map((w) => [w.word, w.pos, w.def]),
+    };
+    const i = S.custom.findIndex((x) => x.id === unit.id);
+    if (i >= 0) S.custom[i] = unit;
+    else {
+      S.custom.push(unit);
+      S.sel = [unit.id];
+      S.selAt = now;
+    }
+    persist();
+    goHome();
+  });
+  $("ed-delete").addEventListener("click", (e) => {
+    armOrRun(e.currentTarget, "Tap again to delete this unit", "Delete unit", () => {
+      const id = editingId;
+      if (!id) return;
+      S.custom = S.custom.filter((u) => u.id !== id);
+      S.tomb[id] = Date.now();
+      S.sel = S.sel.filter((x) => x !== id);
+      S.selAt = Date.now();
+      for (const k of Object.keys(S.cards)) if (k.startsWith(id + ":")) delete S.cards[k];
+      ensureSelection();
+      persist();
+      goHome();
+    });
+  });
+  for (const id of ["ed-back", "ed-cancel"]) $(id).addEventListener("click", goHome);
+
+  /* ---------- lifecycle ---------- */
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      Cloud.hiddenAt = Date.now();
+      if (P.phase === "ask") P.wasHidden = true;
+      Local.save();
+      Cloud.flush();
+    } else {
+      if (Cloud.ref && Date.now() - Cloud.hiddenAt > 60000) Cloud.pull().then(() => Cloud.schedule()).catch(() => {});
+      if (!$("home").hidden) renderHome();
+    }
+  });
+  window.addEventListener("pagehide", () => { Local.save(); Cloud.flush(); });
+  const unlock = () => { if (S.settings.sound) Sound.ready(); };
+  document.addEventListener("pointerdown", unlock, { once: true });
+  document.addEventListener("keydown", unlock, { once: true });
+
+  ensureSelection();
+  renderHome();
+  show("home");
+  Cloud.connect();
+})();
+</script>
+</body>
+</html>
