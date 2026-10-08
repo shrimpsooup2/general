@@ -207,6 +207,7 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
 .wr-word { font-family: var(--font-mono); font-weight: 600; }
 .wr-pos { font-family: var(--font-display); font-style: italic; color: var(--ink-3); margin-left: 8px; }
 .wr-def { grid-column: 1 / -1; color: var(--ink-2); font-size: 0.9375rem; }
+.word-list:not(.show-defs) .wr-def { display: none; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   font-size: 0.8125rem; color: var(--ink-2);
@@ -247,42 +248,35 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
 }
 .tag.new { background: var(--accent-tint); color: var(--accent); }
 .unit-tag { font-size: 0.8125rem; color: var(--ink-3); }
-.definition {
-  font-family: var(--font-display); font-weight: 500;
-  font-size: clamp(1.5rem, 1.15rem + 1.8vw, 2.125rem); line-height: 1.22;
-  text-wrap: pretty; overflow-wrap: anywhere; min-height: 2.44em;
+.headword { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.headword .hw {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(2.25rem, 1.6rem + 2.8vw, 3.25rem); line-height: 1.05; letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
-.definition .pos {
-  font-style: italic; font-weight: 400; font-size: 0.62em; color: var(--ink-3);
-  margin-right: 0.2em; white-space: nowrap;
-}
-.definition.enter { animation: rise 0.22s ease-out; }
+.headword .pos { font-family: var(--font-display); font-style: italic; font-size: 1.25rem; color: var(--ink-3); }
+.headword .speak { align-self: center; }
+.headword.enter { animation: rise 0.22s ease-out; }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hint-line {
+  font-family: var(--font-mono); font-size: 1.0625rem; letter-spacing: 0.05em; line-height: 1.5;
+  color: var(--ink-3); overflow-wrap: anywhere;
+}
+.hint-line b { color: var(--ink); font-weight: 600; }
 
 .answer { display: grid; gap: 12px; }
-.blank { position: relative; }
-.blank input, .trace {
-  font-family: var(--font-mono); font-weight: 500;
-  font-size: clamp(1.375rem, 1.15rem + 1.2vw, 1.75rem); letter-spacing: 0.06em; line-height: 1.3;
-  padding: 6px 2px 8px; margin: 0;
-}
-.blank input {
-  appearance: none; -webkit-appearance: none; position: relative; z-index: 1;
-  display: block; width: 100%; border: 0; border-radius: 0; background: transparent;
+.blank textarea {
+  appearance: none; -webkit-appearance: none; display: block; width: 100%; margin: 0;
+  resize: none; overflow: hidden; min-height: calc(1.45em + 16px);
+  font-family: var(--font-ui); font-size: clamp(1.125rem, 1.02rem + 0.5vw, 1.3125rem); line-height: 1.45;
+  padding: 6px 2px 8px; border: 0; border-radius: 0; background: transparent;
   border-bottom: 2px solid var(--ink); color: var(--ink); caret-color: var(--accent); outline: none;
 }
-.blank input:focus { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }
-.blank input::placeholder {
-  font-family: var(--font-ui); font-weight: 400; font-size: 1rem; letter-spacing: 0;
-  color: var(--ink-3); opacity: 1;
-}
-.blank.good input { border-bottom-color: var(--good); box-shadow: 0 2px 0 0 var(--good); }
-.blank.bad input { border-bottom-color: var(--bad); box-shadow: 0 2px 0 0 var(--bad); }
-.blank.warn input { border-bottom-color: var(--warn); box-shadow: 0 2px 0 0 var(--warn); }
-.trace {
-  position: absolute; inset: 0 0 auto 0; color: var(--ink-3); opacity: 0.6;
-  white-space: pre; overflow: hidden; pointer-events: none; border-bottom: 2px solid transparent;
-}
+.blank textarea:focus { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }
+.blank textarea::placeholder { font-size: 1rem; color: var(--ink-3); opacity: 1; }
+.blank.good textarea { border-bottom-color: var(--good); box-shadow: 0 2px 0 0 var(--good); }
+.blank.bad textarea { border-bottom-color: var(--bad); box-shadow: 0 2px 0 0 var(--bad); }
+.blank.warn textarea { border-bottom-color: var(--warn); box-shadow: 0 2px 0 0 var(--warn); }
 .answer-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .answer-actions .left { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -299,17 +293,15 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
 .fb.bad .fb-title { color: var(--bad); }
 .fb.new .fb-title { color: var(--accent); }
 .lvl-up { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink-2); font-size: 0.875rem; }
-.fb-word {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  font-family: var(--font-mono); font-weight: 600; font-size: 1.625rem; letter-spacing: 0.05em;
-  color: var(--ink); overflow-wrap: anywhere;
+.fb-def {
+  font-family: var(--font-display); font-weight: 500; font-size: 1.375rem; line-height: 1.3;
+  color: var(--ink); overflow-wrap: anywhere; text-wrap: pretty;
 }
-.fb-word mark { background: transparent; color: var(--bad); text-decoration: underline 3px; text-underline-offset: 5px; }
-.fb.warn .fb-word mark { color: var(--warn); }
+.fb-def mark { background: transparent; color: var(--bad); text-decoration: underline 2px; text-underline-offset: 4px; }
+.fb.warn .fb-def mark, .fb.good .fb-def mark { color: var(--warn); }
 .fb-note, .fb-yours, .fb-instr { font-size: 0.9375rem; color: var(--ink-2); }
 .fb-note b { color: var(--ink); }
-.fb-yours .yours { font-family: var(--font-mono); color: var(--ink); }
-.fb-yours del { color: var(--bad); text-decoration-thickness: 2px; }
+.fb-yours span { color: var(--ink); }
 .speak {
   appearance: none; -webkit-appearance: none; display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--rule-strong);
@@ -392,7 +384,7 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
         </svg>
         <h1 id="app-title" tabindex="-1">Vocab Sprint</h1>
       </div>
-      <p class="lede">Read the definition, type the word. Words you miss come back within a few cards. Words you answer quickly get spaced further apart.</p>
+      <p class="lede">See a word, type its definition. Words you miss come back within a few cards. Words you answer quickly get spaced further apart.</p>
     </header>
 
     <section class="launch" aria-labelledby="launch-title">
@@ -404,7 +396,7 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
       <div class="meter" id="launch-meter" role="img"></div>
       <ul class="legend" id="launch-legend"></ul>
       <button class="btn primary big" id="start" type="button">Start practice</button>
-      <p class="tips"><kbd>Enter</kbd> checks your answer · <kbd>?</kbd> shows a letter · <kbd>Enter</kbd> on an empty line shows the word</p>
+      <p class="tips"><kbd>Enter</kbd> checks your answer · <kbd>?</kbd> gives a hint · <kbd>Enter</kbd> on an empty line shows the definition</p>
     </section>
 
     <section class="block" aria-labelledby="units-title">
@@ -421,15 +413,17 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
 
     <details class="panel" id="words-panel">
       <summary><span>Word list<span class="count" id="words-count"></span></span></summary>
-      <div class="panel-body"><ul class="word-list" id="word-list"></ul></div>
+      <div class="panel-body">
+        <div class="row"><button class="btn ghost tiny" id="defs-toggle" type="button" aria-pressed="false">Show definitions</button></div>
+        <ul class="word-list" id="word-list"></ul>
+      </div>
     </details>
 
     <details class="panel" id="settings-panel">
       <summary><span>Settings</span></summary>
       <div class="panel-body">
         <label class="toggle"><input type="checkbox" id="set-sound"><span><b>Sound effects</b><small>A short tone for right and wrong answers.</small></span></label>
-        <label class="toggle" id="set-speak-row"><input type="checkbox" id="set-speak"><span><b>Say each word aloud</b><small>Your device reads the word after you answer.</small></span></label>
-        <label class="toggle"><input type="checkbox" id="set-lenient"><span><b>Forgive one-letter typos</b><small>Leave this off if your test grades spelling.</small></span></label>
+        <label class="toggle" id="set-speak-row"><input type="checkbox" id="set-speak"><span><b>Say each word aloud</b><small>Your device reads the word when it appears.</small></span></label>
         <div class="row"><button class="btn ghost small danger" id="reset" type="button">Reset progress for the selected units</button></div>
         <p class="sync" id="sync"></p>
       </div>
@@ -451,13 +445,17 @@ details.panel[open] > summary::after { transform: rotate(225deg); }
 
     <article class="card" id="card">
       <p class="card-eyebrow"><span class="tag" id="c-tag"></span><span class="unit-tag" id="c-unit"></span></p>
-      <p class="definition" id="c-def"><span class="pos" id="c-pos"></span><span id="c-text"></span></p>
+      <div class="headword" id="c-head">
+        <p class="hw" id="c-word"></p>
+        <span class="pos" id="c-pos"></span>
+        <button type="button" class="speak" id="say-btn" aria-label="Say the word aloud" hidden></button>
+      </div>
+      <p class="hint-line" id="hint-line" aria-live="polite" hidden></p>
       <div class="feedback" id="feedback" aria-live="polite"></div>
       <form class="answer" id="answer-form" autocomplete="off" novalidate>
-        <label class="sr-only" for="answer">Type the word that matches the definition</label>
+        <label class="sr-only" for="answer">Type the definition of the word</label>
         <div class="blank" id="blank">
-          <div class="trace" id="trace" aria-hidden="true"></div>
-          <input id="answer" name="answer" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
+          <textarea id="answer" name="answer" rows="1" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go"></textarea>
         </div>
         <div class="answer-actions">
           <div class="left">
@@ -706,34 +704,30 @@ const Engine = (() => {
     }
     return d[n][m];
   }
-  const SUFFIXES = ["s", "es", "d", "ed", "ing", "ly", "y", "ness", "ment", "ments", "er", "ers", "or", "ors", "ion", "ions", "ive", "al", "ity", "ies", "ied"];
-  // "harassed" for "harass", "coercion" for "coerce": the right word in another form.
-  function isOtherForm(a, f) {
-    if (a.length < f.length || a === f) return false;
-    const stems = [f];
-    if (f.endsWith("e")) stems.push(f.slice(0, -1));
-    if (f.endsWith("y")) stems.push(f.slice(0, -1) + "i");
-    return stems.some((st) => a.startsWith(st) && SUFFIXES.includes(a.slice(st.length)));
+  // Grading a typed definition: every word that carries meaning ("key word") is looked for in the
+  // answer, allowing small typos and other endings (seed/seeded). Little words like "a", "to", "or"
+  // are ignored, but "not" counts because it flips the meaning.
+  const STOP = new Set(("a an the to of or and in on at by for with as that it its be been being is are was were " +
+    "can could may might so but this these those their his her which who whom from into about than then very " +
+    "some any make makes made give gives given do does did have has had get gets got related relating relates").split(" "));
+  const STRIP = ["ingly", "edly", "ments", "ment", "ness", "ings", "ing", "ers", "ies", "ied", "ily", "ly", "ed", "er", "es", "s", "y", "e"];
+  function tokens(s) { return norm(s).match(/[a-z0-9']+/g) || []; }
+  function sameText(a, b) { return tokens(a).join(" ") === tokens(b).join(" "); }
+  function stem(w) {
+    w = w.replace(/'s$/, "").replace(/'/g, "");
+    for (const suf of STRIP) if (w.length - suf.length >= 3 && w.endsWith(suf)) return w.slice(0, -suf.length);
+    return w;
   }
-  // Longest common subsequence: which letters of each string line up with the other.
-  function lcs(a, b) {
-    const n = a.length, m = b.length;
-    const dp = [];
-    for (let i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
-    for (let i = n - 1; i >= 0; i--) {
-      for (let j = m - 1; j >= 0; j--) {
-        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-      }
-    }
-    const ka = new Set(), kb = new Set();
-    let i = 0, j = 0;
-    while (i < n && j < m) {
-      if (a[i] === b[j]) { ka.add(i); kb.add(j); i++; j++; }
-      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
-      else j++;
-    }
-    return { ka, kb, len: dp[0][0] };
+  function wordMatch(t, k) {
+    if (t === k) return true;
+    const st = stem(t), sk = stem(k);
+    if (st === sk) return true;
+    const tol = k.length >= 7 ? 2 : k.length >= 4 ? 1 : 0;
+    if (tol && osa(t, k) <= tol) return true;
+    return sk.length >= 5 && osa(st, sk) <= 1;
   }
+  // For each key word, whether the typed answer contains it.
+  function coverage(typed, keys) { return keys.map((k) => typed.some((t) => wordMatch(t, k))); }
   function fmtIn(ms) {
     if (ms <= 0) return "now";
     if (ms < 60000) return "in under a minute";
@@ -774,10 +768,18 @@ const Engine = (() => {
     const seen = new Set();
     for (const u of units) {
       for (const w of u.words) {
-        const id = u.id + ":" + norm(w.word);
+        const id = "d:" + u.id + ":" + norm(w.word);
         if (seen.has(id)) continue;
         seen.add(id);
-        out.push({ id, unitId: u.id, unitName: u.name, word: w.word, alts: w.alts, pos: w.pos, def: w.def });
+        const toks = tokens(w.def);
+        const loose = !toks.some((t) => !STOP.has(t));
+        const keyOf = (list) => (loose ? list : list.filter((t) => !STOP.has(t)));
+        out.push({
+          id, unitId: u.id, unitName: u.name, word: w.word, pos: w.pos, def: w.def,
+          keys: keyOf(toks), loose, nWords: Math.max(1, toks.length),
+          // Comma- or "or"-separated pieces: getting one whole piece right counts as "almost".
+          parts: w.def.split(/,|\bor\b/i).map((part) => keyOf(tokens(part))).filter((k) => k.length),
+        });
       }
     }
     return out;
@@ -795,8 +797,8 @@ const Engine = (() => {
       v: 1,
       cards: {},
       L: 1, Lat: 0,
-      times: { ttfk: [], tot: [] },
-      settings: { sound: true, speak: false, lenient: false }, setAt: 0,
+      times: { ttfk: [], cpc: [] },
+      settings: { sound: true, speak: false }, setAt: 0,
       sel: BUILTIN.length ? [BUILTIN[0].id] : [], selAt: 0,
       custom: [], tomb: {},
       days: {},
@@ -807,7 +809,8 @@ const Engine = (() => {
     if (!raw || typeof raw !== "object") return s;
     if (raw.cards && typeof raw.cards === "object") {
       for (const [k, v] of Object.entries(raw.cards)) {
-        if (!v || !(num(v.s, 0) > 0) || !(num(v.t, 0) > 0)) continue;
+        // "d:" marks word-to-definition progress; anything else is from the earlier reversed version.
+        if (!k.startsWith("d:") || !v || !(num(v.s, 0) > 0) || !(num(v.t, 0) > 0)) continue;
         const st = { s: +v.s, t: +v.t, e: num(v.e, 1), n: num(v.n, 1), c: num(v.c, 0), w: num(v.w, 0) };
         if (num(v.lf, 0) > 0) st.lf = +v.lf;
         s.cards[k] = st;
@@ -816,7 +819,7 @@ const Engine = (() => {
     s.L = Math.min(1.8, Math.max(0.6, num(raw.L, 1)));
     s.Lat = num(raw.Lat, 0);
     if (raw.times && typeof raw.times === "object") {
-      for (const k of ["ttfk", "tot"]) {
+      for (const k of ["ttfk", "cpc"]) {
         if (Array.isArray(raw.times[k])) s.times[k] = raw.times[k].map(Number).filter(Number.isFinite).slice(-30);
       }
     }
@@ -851,7 +854,7 @@ const Engine = (() => {
       out.cards[id] = !x ? y : !y ? x : y.t > x.t ? y : x;
     }
     const lw = b.Lat > a.Lat ? b : a;
-    out.L = lw.L; out.Lat = lw.Lat; out.times = { ttfk: lw.times.ttfk.slice(), tot: lw.times.tot.slice() };
+    out.L = lw.L; out.Lat = lw.Lat; out.times = { ttfk: lw.times.ttfk.slice(), cpc: lw.times.cpc.slice() };
     const sw = b.setAt > a.setAt ? b : a;
     out.settings = Object.assign({}, sw.settings); out.setAt = sw.setAt;
     const selw = b.selAt > a.selAt ? b : a;
@@ -989,6 +992,7 @@ const Engine = (() => {
         else if (kind === "bad") this.note(220, 0, 0.24, "triangle", 0.09, 150);
         else if (kind === "tick") this.note(660, 0, 0.07, "sine", 0.05);
         else if (kind === "new") this.note(523, 0, 0.14, "sine", 0.05);
+        else if (kind === "almost") { this.note(523, 0, 0.1, "sine", 0.06); this.note(440, 0.08, 0.16, "sine", 0.06); }
         else if (kind === "streak") [523, 659, 784, 1047].forEach((f, i) => this.note(f, i * 0.07, 0.15));
       } catch (e) { /* audio is optional */ }
     },
@@ -1156,7 +1160,6 @@ const Engine = (() => {
     $("set-sound").checked = S.settings.sound;
     $("set-speak").checked = S.settings.speak;
     $("set-speak-row").hidden = !canSpeak;
-    $("set-lenient").checked = S.settings.lenient;
     $("reset").disabled = !seen;
     disarm($("reset"), "Reset progress for the selected units");
     renderSync();
@@ -1194,7 +1197,7 @@ const Engine = (() => {
   });
   $("start").addEventListener("click", startPractice);
   $("add-unit").addEventListener("click", () => openEditor(null));
-  for (const key of ["sound", "speak", "lenient"]) {
+  for (const key of ["sound", "speak"]) {
     $("set-" + key).addEventListener("change", (e) => {
       S.settings[key] = e.target.checked;
       S.setAt = Date.now();
@@ -1202,6 +1205,11 @@ const Engine = (() => {
       if (key === "sound" && e.target.checked) { Sound.ready(); Sound.play("good"); }
     });
   }
+  $("defs-toggle").addEventListener("click", (e) => {
+    const on = $("word-list").classList.toggle("show-defs");
+    e.currentTarget.setAttribute("aria-pressed", String(on));
+    e.currentTarget.textContent = on ? "Hide definitions" : "Show definitions";
+  });
   $("reset").addEventListener("click", (e) => {
     armOrRun(e.currentTarget, "Tap again to erase progress", "Reset progress for the selected units", () => {
       for (const c of cardsOf(selectedUnits())) delete S.cards[c.id];
@@ -1270,73 +1278,97 @@ const Engine = (() => {
     tag.textContent = P.isNew ? "New word" : "Review";
     tag.className = "tag" + (P.isNew ? " new" : "");
     $("c-unit").textContent = P.multi ? c.unitName : "";
-    $("c-pos").textContent = c.pos ? "(" + c.pos + ") " : "";
-    $("c-text").textContent = c.def;
-    const def = $("c-def");
-    def.classList.remove("enter");
-    void def.offsetWidth;
-    def.classList.add("enter");
+    $("c-word").textContent = c.word;
+    $("c-pos").textContent = c.pos ? "(" + c.pos + ")" : "";
+    const head = $("c-head");
+    head.classList.remove("enter");
+    void head.offsetWidth;
+    head.classList.add("enter");
+    renderHint();
     $("feedback").innerHTML = "";
     $("blank").className = "blank";
-    $("hint-btn").hidden = false;
-    $("hint-btn").disabled = false;
-    $("idk-btn").hidden = false;
-    $("check-btn").textContent = "Check";
-    input.value = "";
-    updateTrace();
+    setActions("ask");
+    input.placeholder = P.isNew ? "Type it, or press Enter to see it" : "Type the definition";
+    setAnswer("");
     focusInput();
+    if (S.settings.speak) speak(c.word);
     P.t0 = performance.now();
   }
 
+  // Which buttons sit under the answer line in each phase.
+  function setActions(phase) {
+    const asking = phase === "ask";
+    $("hint-btn").hidden = !asking;
+    $("hint-btn").disabled = false;
+    $("idk-btn").hidden = !asking;
+    $("check-btn").textContent = phase === "correct" || phase === "review" ? "Next" : "Check";
+  }
+  function setAnswer(v) {
+    input.value = v;
+    autosize();
+  }
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = input.scrollHeight + "px";
+  }
   function focusInput() {
     if (document.activeElement !== input) {
       try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
     }
   }
 
-  function tracePattern() {
-    if (!P.card) return "";
-    const letters = Array.from(P.card.word);
-    if (P.phase === "copy" || P.phase === "done") return letters.join("");
-    if (P.phase === "ask" && P.hints) {
-      let shown = 0;
-      return letters.map((ch) => (ch === " " ? " " : shown++ < P.hints ? ch : "·")).join("");
-    }
-    return "";
+  // Hint 1 shows the first letter of every word; each later hint spells out one more word.
+  function renderHint() {
+    const el = $("hint-line");
+    if (P.phase !== "ask" || !P.hints) { el.hidden = true; el.textContent = ""; return; }
+    const shown = P.hints - 1;
+    let i = 0;
+    el.innerHTML = P.card.def.split(/([A-Za-z0-9'’]+)/).map((piece, k) => {
+      if (k % 2 === 0) return esc(piece);
+      return i++ < shown ? "<b>" + esc(piece) + "</b>" : esc(piece[0]) + "·".repeat(piece.length - 1);
+    }).join("");
+    el.hidden = false;
   }
-  function updateTrace() {
-    const pat = Array.from(tracePattern());
-    const typed = Array.from(input.value).length;
-    $("trace").textContent = pat.map((ch, i) => (i < typed ? " " : ch)).join("");
-    input.placeholder = pat.length || P.phase !== "ask" ? "" : P.isNew ? "Type it, or press Enter to see it" : "Type the word";
-  }
-
   function giveHint() {
-    if (P.phase !== "ask") return;
-    const letters = Array.from(P.card.word).filter((ch) => ch !== " ").length;
-    if (P.hints >= letters - 1) return;
+    if (P.phase !== "ask" || P.hints >= P.card.nWords) return;
     P.hints++;
-    if (P.hints >= letters - 1) $("hint-btn").disabled = true;
-    updateTrace();
+    if (P.hints >= P.card.nWords) $("hint-btn").disabled = true;
+    renderHint();
     focusInput();
   }
 
-  function judge(raw, card, pool) {
-    const a = norm(raw);
-    if (!a) return { kind: "blank" };
-    const forms = [card.word].concat(card.alts).map(norm);
-    if (forms.includes(a)) return { kind: "exact" };
-    const other = pool.find((c) => c.id !== card.id && [c.word].concat(c.alts).map(norm).includes(a));
-    if (other) return { kind: "other", other };
-    if (forms.some((f) => isOtherForm(a, f))) return { kind: "form" };
-    const len = forms[0].length;
-    const dist = Math.min.apply(null, forms.map((f) => osa(a, f)));
-    if ((dist === 1 && len >= 4) || (dist === 2 && len >= 8)) return { kind: "almost" };
-    return { kind: "wrong" };
+  // The book definition, with the key words the learner left out underlined.
+  function defMarkup(card, hit) {
+    let i = 0;
+    return card.def.split(/([A-Za-z0-9'’]+)/).map((piece, k) => {
+      if (k % 2 === 0) return esc(piece);
+      if (!card.loose && STOP.has(norm(piece))) return esc(piece);
+      const missed = hit && hit[i] === false;
+      i++;
+      return missed ? "<mark>" + esc(piece) + "</mark>" : esc(piece);
+    }).join("");
   }
-  function matches(raw, card) {
-    const a = norm(raw);
-    return [card.word].concat(card.alts).some((f) => norm(f) === a);
+
+  // correct: at least 3/4 of the key words. partial: at least a third, or one whole piece of the
+  // definition ("an enemy" for "an enemy, opponent"). other: it fits a different word's definition.
+  function judge(raw, card, pool) {
+    const typed = tokens(raw);
+    if (!typed.length) return { kind: "blank", hit: card.keys.map(() => false) };
+    const hit = coverage(typed, card.keys);
+    const recall = card.keys.length ? hit.filter(Boolean).length / card.keys.length : sameText(raw, card.def) ? 1 : 0;
+    if (recall >= 0.75) return { kind: "correct", hit, exact: sameText(raw, card.def) };
+    if (recall < 0.5) {
+      let best = null;
+      for (const c of pool) {
+        if (c.id === card.id || !c.keys.length) continue;
+        const r = coverage(typed, c.keys).filter(Boolean).length / c.keys.length;
+        if (r >= 0.75 && (!best || r > best.r)) best = { c, r };
+      }
+      if (best) return { kind: "other", other: best.c, hit };
+    }
+    const partDone = card.parts.some((part) => part.every((k) => typed.some((t) => wordMatch(t, k))));
+    if (recall >= 0.33 || partDone) return { kind: "partial", hit };
+    return { kind: "wrong", hit };
   }
 
   function median(arr) {
@@ -1344,12 +1376,14 @@ const Engine = (() => {
     const s = arr.slice().sort((x, y) => x - y);
     return s[s.length >> 1];
   }
-  // Grades a correct answer by speed against this learner's own typical times.
+  // Grades a correct answer by speed against this learner's own typical times:
+  // how long before the first key, and how long per character while typing.
   function fluency(ttfk, total, len) {
-    const mT = median(S.times.ttfk) || 2600;
-    const mTot = median(S.times.tot) || 5200;
-    if (ttfk > Math.max(2.2 * mT, mT + 4000) || total - ttfk > 2500 + 450 * len) return G.HARD;
-    if (ttfk < 0.65 * mT && total < 0.85 * mTot) return G.EASY;
+    const mT = median(S.times.ttfk) || 3000;
+    const mC = median(S.times.cpc) || 300;
+    const typing = total - ttfk;
+    if (ttfk > Math.max(2.2 * mT, mT + 4000) || typing > 3000 + 2.5 * mC * len) return G.HARD;
+    if (ttfk < 0.65 * mT && typing < 1.2 * mC * len) return G.EASY;
     return G.GOOD;
   }
   function pushTime(key, v) {
@@ -1365,33 +1399,20 @@ const Engine = (() => {
   }
 
   function submit() {
-    if (P.phase === "correct") { nextCard(); return; }
-    if (P.phase === "copy") {
-      if (matches(input.value, P.card)) finishCopy();
-      else nudgeCopy();
-      return;
-    }
+    if (P.phase === "correct" || P.phase === "review") { nextCard(); return; }
+    if (P.phase === "copy") { checkCopy(); return; }
     if (P.phase !== "ask") return;
     const now = Date.now();
     const total = performance.now() - P.t0;
     const ttfk = P.firstKey ? P.firstKey - P.t0 : total;
     const c = P.card;
-    const raw = input.value;
+    const raw = input.value.replace(/\s+/g, " ").trim();
     const res = judge(raw, c, P.cards);
-    const len = norm(c.word).replace(/ /g, "").length;
-    const heavy = P.hints >= Math.max(2, Math.ceil(len / 3));
-    const timed = P.wasHidden ? G.GOOD : fluency(ttfk, total, len);
-    let grade = G.AGAIN, ok = false, typo = false;
-    if (res.kind === "exact") {
-      ok = true;
-      grade = heavy ? G.AGAIN : P.hints ? G.HARD : timed;
-    } else if (res.kind === "almost" && S.settings.lenient) {
-      ok = true;
-      typo = true;
-      grade = P.hints ? G.HARD : Math.min(G.GOOD, timed);
-    } else if (res.kind === "almost" || res.kind === "form") {
-      grade = G.ALMOST;
-    }
+    const heavy = P.hints - 1 >= Math.max(1, Math.ceil(c.nWords / 2));
+    const ok = res.kind === "correct";
+    let grade = G.AGAIN;
+    if (ok) grade = heavy ? G.AGAIN : P.hints ? G.HARD : P.wasHidden ? G.GOOD : fluency(ttfk, total, raw.length);
+    else if (res.kind === "partial") grade = G.ALMOST;
 
     const prev = S.cards[c.id];
     const before = Engine.level(prev);
@@ -1402,111 +1423,105 @@ const Engine = (() => {
       S.Lat = now;
       P.ses.recent.push(grade >= G.HARD ? 1 : 0);
     }
-    if (res.kind === "exact" && !P.hints && !P.wasHidden) { pushTime("ttfk", ttfk); pushTime("tot", total); }
+    if (ok && !P.hints && !P.wasHidden) {
+      pushTime("ttfk", ttfk);
+      pushTime("cpc", (total - ttfk) / Math.max(4, raw.length));
+    }
     const after = Engine.level(out.st);
     const credit = ok && !heavy;
     const ses = P.ses;
     ses.shown.push(c.id);
     ses.reps++;
-    ses.activeMs += Math.min(total, 45000);
+    ses.activeMs += Math.min(total, 60000);
     if (credit) { ses.correct++; ses.streak++; ses.best = Math.max(ses.best, ses.streak); }
     else { ses.streak = 0; if (!ok) ses.missed[c.id] = (ses.missed[c.id] || 0) + 1; }
     bumpDay();
     persist();
     renderDrillBar();
-    if (ok) showCorrect(grade, before, after, typo, heavy);
+    if (ok) showCorrect(res, grade, before, after, heavy);
+    else if (res.kind === "partial") showPartial(res);
     else showMiss(res, raw);
   }
 
-  function showCorrect(grade, before, after, typo, heavy) {
+  function showCorrect(res, grade, before, after, heavy) {
     P.phase = "correct";
-    const c = P.card;
     $("blank").className = "blank good";
-    $("hint-btn").hidden = true;
-    $("idk-btn").hidden = true;
-    $("check-btn").textContent = "Next";
+    setActions("correct");
+    renderHint();
     let note = "";
-    if (typo) note = "Counted as correct. It's spelled <b>" + esc(c.word) + "</b>.";
-    else if (heavy) note = "You needed most of the letters, so it will come back soon.";
+    if (heavy) note = "You needed most of the hints, so it will come back soon.";
     else if (P.isNew && grade >= G.GOOD) note = "You already knew this one.";
     else if (grade === G.EASY) note = "Quick.";
     else if (grade === G.HARD) note = P.hints ? "With a hint, so it will come back a little sooner." : "That took a moment, so it will come back a little sooner.";
     const up = after > before && before > 0
       ? '<span class="lvl-up"><i class="sw lv' + after + '"></i>Now ' + Engine.LEVELS[after].name.toLowerCase() + "</span>"
       : "";
+    // Unless they typed the book's wording, show it, marking any key word they skipped.
+    const showDef = !res.exact;
     $("feedback").innerHTML = '<div class="fb good"><p class="fb-title">' + ICON.check + "Correct " + up + "</p>" +
+      (showDef ? '<p class="fb-def">' + defMarkup(P.card, res.hit) + "</p>" : "") +
       (note ? '<p class="fb-note">' + note + "</p>" : "") + "</div>";
     const milestone = P.ses.streak > 0 && P.ses.streak % 10 === 0;
     Sound.play(milestone ? "streak" : "good");
     if (milestone) Confetti.burst();
-    if (S.settings.speak) speak(c.word);
-    P.timer = setTimeout(nextCard, note || up ? 1300 : 650);
+    P.timer = setTimeout(nextCard, showDef ? 1800 : note || up ? 1200 : 650);
   }
 
-  function attemptMarkup(raw, word) {
-    const a = Array.from(raw.trim()), b = Array.from(word);
-    const m = lcs(a.map((ch) => ch.toLowerCase()), b.map((ch) => ch.toLowerCase()));
-    const close = m.len >= Math.ceil(b.length / 2);
-    return {
-      close,
-      word: close ? b.map((ch, i) => (m.kb.has(i) ? esc(ch) : "<mark>" + esc(ch) + "</mark>")).join("") : esc(word),
-      yours: close ? a.map((ch, i) => (m.ka.has(i) ? esc(ch) : "<del>" + esc(ch) + "</del>")).join("") : esc(raw.trim()),
-    };
+  // Most of it: show the full definition, mark what was missing, continue on Enter.
+  function showPartial(res) {
+    P.phase = "review";
+    $("blank").className = "blank warn";
+    setActions("review");
+    renderHint();
+    $("feedback").innerHTML = '<div class="fb warn"><p class="fb-title">Almost</p>' +
+      '<p class="fb-def">' + defMarkup(P.card, res.hit) + "</p>" +
+      '<p class="fb-instr">The underlined words were missing. Press Enter to go on.</p></div>';
+    Sound.play("almost");
   }
 
+  // A miss: show the definition and have them type it once before moving on.
   function showMiss(res, raw) {
     P.phase = "copy";
     P.copyT0 = performance.now();
     const c = P.card;
-    let cls = "bad", title = "Not quite", extra = "";
-    let wordHTML = esc(c.word);
+    let cls = "bad", title = "Not quite";
     if (res.kind === "blank") {
       cls = P.isNew ? "new" : "bad";
       title = P.isNew ? "New word" : "Here it is";
     } else if (res.kind === "other") {
-      title = "That's a different word";
-      extra = '<p class="fb-note"><b>' + esc(res.other.word) + "</b> means “" + esc(res.other.def) + ".”</p>";
-    } else if (res.kind === "form") {
-      cls = "warn";
-      title = "Right word, different form";
-      extra = '<p class="fb-note">You typed <b>' + esc(raw.trim()) + "</b>. Type the form that matches the definition.</p>";
-    } else {
-      const mk = attemptMarkup(raw, c.word);
-      if (res.kind === "almost") { cls = "warn"; title = "Close. Check the spelling"; }
-      wordHTML = mk.word;
-      extra = '<p class="fb-yours">You typed <span class="yours">' + mk.yours + "</span></p>";
+      title = "That's the definition of “" + res.other.word + "”";
     }
-    const sp = canSpeak ? '<button type="button" class="speak" id="speak-btn" aria-label="Say the word aloud">' + ICON.speaker + "</button>" : "";
-    $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + title + "</p>" +
-      '<p class="fb-word"><span>' + wordHTML + "</span>" + sp + "</p>" + extra +
-      '<p class="fb-instr" id="fb-instr">Type it to continue.</p></div>';
+    $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + esc(title) + "</p>" +
+      '<p class="fb-def">' + esc(c.def) + "</p>" +
+      (raw ? '<p class="fb-yours">You wrote <span>' + esc(raw) + "</span></p>" : "") +
+      '<p class="fb-instr" id="fb-instr">Type the definition to continue.</p></div>';
     $("blank").className = "blank" + (cls === "new" ? "" : " " + cls);
-    $("hint-btn").hidden = true;
-    $("idk-btn").hidden = true;
-    $("check-btn").textContent = "Check";
-    input.value = "";
-    updateTrace();
+    setActions("copy");
+    renderHint();
+    input.placeholder = "Type it as shown above";
+    setAnswer("");
     focusInput();
     Sound.play(cls === "new" ? "new" : "bad");
-    if (S.settings.speak) speak(c.word);
   }
 
-  function finishCopy() {
-    if (P.phase !== "copy") return;
-    P.phase = "done";
-    P.ses.activeMs += Math.min(performance.now() - P.copyT0, 30000);
-    $("blank").className = "blank good";
-    updateTrace();
-    Sound.play("tick");
-    P.timer = setTimeout(nextCard, 280);
-  }
-  function nudgeCopy() {
+  function checkCopy() {
+    const hit = coverage(tokens(input.value), P.card.keys);
+    const missing = P.card.keys.filter((k, i) => !hit[i]);
+    if (!missing.length || (!P.card.keys.length && sameText(input.value, P.card.def))) { finishCopy(); return; }
     const b = $("blank");
     b.classList.remove("shake");
     void b.offsetWidth;
     b.classList.add("shake");
     const instr = $("fb-instr");
-    if (instr) instr.textContent = "Type it exactly as shown: " + P.card.word;
+    if (instr) instr.textContent = "Still missing: " + missing.join(", ");
+  }
+  function finishCopy() {
+    if (P.phase !== "copy") return;
+    P.phase = "done";
+    P.ses.activeMs += Math.min(performance.now() - P.copyT0, 45000);
+    $("blank").className = "blank good";
+    Sound.play("tick");
+    P.timer = setTimeout(nextCard, 280);
   }
 
   function showCaughtUp() {
@@ -1532,7 +1547,7 @@ const Engine = (() => {
     show("home");
   }
 
-  // Enter is handled here rather than by the form, so it still works while typing is paused.
+  // Enter always submits (no line breaks in an answer), and still works while typing is paused.
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
@@ -1551,19 +1566,19 @@ const Engine = (() => {
       input.value = input.value.replace(/\?/g, "");
       giveHint();
     }
-    if (P.phase === "ask" && !P.firstKey && input.value) P.firstKey = performance.now();
-    updateTrace();
-    if (P.phase === "copy" && matches(input.value, P.card)) finishCopy();
+    if (P.phase === "ask" && !P.firstKey && input.value.trim()) P.firstKey = performance.now();
+    autosize();
+    if (P.phase === "copy" && sameText(input.value, P.card.def)) finishCopy();
   });
   $("answer-form").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
   // Keep the on-screen keyboard up: these buttons must not take focus from the answer line.
-  for (const id of ["hint-btn", "idk-btn", "check-btn", "mute"]) {
+  for (const id of ["hint-btn", "idk-btn", "check-btn", "mute", "say-btn"]) {
     $(id).addEventListener("pointerdown", (e) => { if (P.phase !== "idle") e.preventDefault(); });
   }
   $("hint-btn").addEventListener("click", giveHint);
   $("idk-btn").addEventListener("click", () => {
     if (P.phase !== "ask") return;
-    input.value = "";
+    setAnswer("");
     submit();
   });
   $("mute").addEventListener("click", () => {
@@ -1574,9 +1589,11 @@ const Engine = (() => {
     if (S.settings.sound) Sound.play("good");
     focusInput();
   });
-  $("feedback").addEventListener("pointerdown", (e) => { if (e.target.closest("#speak-btn")) e.preventDefault(); });
-  $("feedback").addEventListener("click", (e) => {
-    if (e.target.closest("#speak-btn") && P.card) { speak(P.card.word); focusInput(); }
+  $("say-btn").hidden = !canSpeak;
+  $("say-btn").innerHTML = ICON.speaker;
+  $("say-btn").addEventListener("click", () => {
+    if (P.card) speak(P.card.word);
+    focusInput();
   });
   // Tapping anywhere on the card brings the keyboard back if it was dismissed.
   $("card").addEventListener("click", (e) => { if (!e.target.closest("button") && P.phase !== "idle") focusInput(); });

@@ -3,9 +3,8 @@
 
   To add a unit, copy a block below, give it a new id, and list each word as
     [word, part of speech, first definition]
-  Only the first definition is used (everything before the first semicolon);
-  the app drops anything after a semicolon anyway.
-  To accept more than one spelling, separate them with "|", e.g. "judgment|judgement".
+  The app shows the word and you type the definition. Only the first definition is used
+  (everything before the first semicolon); the app drops anything after a semicolon anyway.
 
   Units can also be added from inside the app (Add a unit), without editing this file.
 */
