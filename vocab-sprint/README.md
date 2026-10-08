@@ -11,12 +11,13 @@ Open `index.html` in a browser. No build step and no install.
 - `Enter` on an empty line (or **Show answer**) reveals the definition. You type it once to move on.
 - `?` (or **Hint**) first shows the first letter of every word in the definition, then spells
   out one more word per press. Hints count as partial credit.
-- Answers are checked for the definition's key words, not exact wording: small words like
-  "a", "to" and "or" are ignored, typos and other endings ("seed"/"seeded") are fine, and "not" counts.
-  - **Correct:** at least three quarters of the key words.
-  - **Almost:** at least a third, or one whole piece of it ("an enemy" for "an enemy, opponent").
-    The missing words are underlined and the word comes back soon.
-  - Typing another word's definition says which word that definition belongs to.
+- Answers must match the book's first definition word for word. Capitals, punctuation and spacing
+  don't matter; anything else does.
+  - **Close, but not exact:** a few letters off, half the key words, or one whole piece of the
+    definition ("an enemy" for "an enemy, opponent"). It counts as wrong, but the penalty is
+    gentler, and the words you missed or changed are underlined.
+  - **Not quite:** the definition is shown. Typing another word's definition says which word it belongs to.
+  - After any miss you type the definition exactly once to move on.
 - A missed word comes back after three or four other cards. Each correct answer pushes a word
   further out. The push is bigger when you answer quickly and when the word had time to fade first.
 - New words come in when nothing is due and you are keeping up, so the pace adapts to you.

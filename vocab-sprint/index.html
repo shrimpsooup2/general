@@ -1337,26 +1337,38 @@ const Engine = (() => {
     focusInput();
   }
 
-  // The book definition, with the key words the learner left out underlined.
-  function defMarkup(card, hit) {
-    let i = 0;
-    return card.def.split(/([A-Za-z0-9'’]+)/).map((piece, k) => {
-      if (k % 2 === 0) return esc(piece);
-      if (!card.loose && STOP.has(norm(piece))) return esc(piece);
-      const missed = hit && hit[i] === false;
-      i++;
-      return missed ? "<mark>" + esc(piece) + "</mark>" : esc(piece);
-    }).join("");
+  // The book definition, with every word the learner left out or changed underlined.
+  function diffMarkup(card, raw) {
+    const typed = tokens(raw);
+    const pieces = card.def.split(/([A-Za-z0-9'\u2019]+)/);
+    const words = pieces.filter((_, k) => k % 2 === 1).map(norm);
+    const n = words.length, m = typed.length;
+    const dp = [];
+    for (let i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) dp[i][j] = words[i] === typed[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+    const keep = new Set();
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (words[i] === typed[j]) { keep.add(i); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    let w = 0;
+    return pieces.map((piece, k) => (k % 2 === 0 ? esc(piece) : keep.has(w++) ? esc(piece) : "<mark>" + esc(piece) + "</mark>")).join("");
   }
 
-  // correct: at least 3/4 of the key words. partial: at least a third, or one whole piece of the
-  // definition ("an enemy" for "an enemy, opponent"). other: it fits a different word's definition.
+  // correct: the book definition word for word (capitals, punctuation and spacing don't matter).
+  // close: not exact, but most of it is there: half the key words, one whole piece of the
+  // definition, or only a few letters off. Close still counts as wrong, just a gentler one.
+  // other: it fits a different word's definition.
   function judge(raw, card, pool) {
     const typed = tokens(raw);
-    if (!typed.length) return { kind: "blank", hit: card.keys.map(() => false) };
+    if (!typed.length) return { kind: "blank" };
+    if (sameText(raw, card.def)) return { kind: "correct" };
     const hit = coverage(typed, card.keys);
-    const recall = card.keys.length ? hit.filter(Boolean).length / card.keys.length : sameText(raw, card.def) ? 1 : 0;
-    if (recall >= 0.75) return { kind: "correct", hit, exact: sameText(raw, card.def) };
+    const recall = card.keys.length ? hit.filter(Boolean).length / card.keys.length : 0;
     if (recall < 0.5) {
       let best = null;
       for (const c of pool) {
@@ -1364,11 +1376,13 @@ const Engine = (() => {
         const r = coverage(typed, c.keys).filter(Boolean).length / c.keys.length;
         if (r >= 0.75 && (!best || r > best.r)) best = { c, r };
       }
-      if (best) return { kind: "other", other: best.c, hit };
+      if (best) return { kind: "other", other: best.c };
     }
+    const target = tokens(card.def).join(" ");
+    const nearText = osa(typed.join(" "), target) <= Math.max(2, Math.round(target.length * 0.25));
     const partDone = card.parts.some((part) => part.every((k) => typed.some((t) => wordMatch(t, k))));
-    if (recall >= 0.33 || partDone) return { kind: "partial", hit };
-    return { kind: "wrong", hit };
+    if (recall >= 0.5 || partDone || nearText) return { kind: "close" };
+    return { kind: "wrong" };
   }
 
   function median(arr) {
@@ -1412,7 +1426,7 @@ const Engine = (() => {
     const ok = res.kind === "correct";
     let grade = G.AGAIN;
     if (ok) grade = heavy ? G.AGAIN : P.hints ? G.HARD : P.wasHidden ? G.GOOD : fluency(ttfk, total, raw.length);
-    else if (res.kind === "partial") grade = G.ALMOST;
+    else if (res.kind === "close") grade = G.ALMOST;
 
     const prev = S.cards[c.id];
     const before = Engine.level(prev);
@@ -1438,12 +1452,11 @@ const Engine = (() => {
     bumpDay();
     persist();
     renderDrillBar();
-    if (ok) showCorrect(res, grade, before, after, heavy);
-    else if (res.kind === "partial") showPartial(res);
+    if (ok) showCorrect(grade, before, after, heavy);
     else showMiss(res, raw);
   }
 
-  function showCorrect(res, grade, before, after, heavy) {
+  function showCorrect(grade, before, after, heavy) {
     P.phase = "correct";
     $("blank").className = "blank good";
     setActions("correct");
@@ -1456,27 +1469,12 @@ const Engine = (() => {
     const up = after > before && before > 0
       ? '<span class="lvl-up"><i class="sw lv' + after + '"></i>Now ' + Engine.LEVELS[after].name.toLowerCase() + "</span>"
       : "";
-    // Unless they typed the book's wording, show it, marking any key word they skipped.
-    const showDef = !res.exact;
     $("feedback").innerHTML = '<div class="fb good"><p class="fb-title">' + ICON.check + "Correct " + up + "</p>" +
-      (showDef ? '<p class="fb-def">' + defMarkup(P.card, res.hit) + "</p>" : "") +
       (note ? '<p class="fb-note">' + note + "</p>" : "") + "</div>";
     const milestone = P.ses.streak > 0 && P.ses.streak % 10 === 0;
     Sound.play(milestone ? "streak" : "good");
     if (milestone) Confetti.burst();
-    P.timer = setTimeout(nextCard, showDef ? 1800 : note || up ? 1200 : 650);
-  }
-
-  // Most of it: show the full definition, mark what was missing, continue on Enter.
-  function showPartial(res) {
-    P.phase = "review";
-    $("blank").className = "blank warn";
-    setActions("review");
-    renderHint();
-    $("feedback").innerHTML = '<div class="fb warn"><p class="fb-title">Almost</p>' +
-      '<p class="fb-def">' + defMarkup(P.card, res.hit) + "</p>" +
-      '<p class="fb-instr">The underlined words were missing. Press Enter to go on.</p></div>';
-    Sound.play("almost");
+    P.timer = setTimeout(nextCard, note || up ? 1200 : 650);
   }
 
   // A miss: show the definition and have them type it once before moving on.
@@ -1485,35 +1483,40 @@ const Engine = (() => {
     P.copyT0 = performance.now();
     const c = P.card;
     let cls = "bad", title = "Not quite";
-    if (res.kind === "blank") {
+    if (res.kind === "close") {
+      cls = "warn";
+      title = "Close, but not exact";
+    } else if (res.kind === "blank") {
       cls = P.isNew ? "new" : "bad";
       title = P.isNew ? "New word" : "Here it is";
     } else if (res.kind === "other") {
       title = "That's the definition of “" + res.other.word + "”";
     }
     $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + esc(title) + "</p>" +
-      '<p class="fb-def">' + esc(c.def) + "</p>" +
+      '<p class="fb-def">' + (raw ? diffMarkup(c, raw) : esc(c.def)) + "</p>" +
       (raw ? '<p class="fb-yours">You wrote <span>' + esc(raw) + "</span></p>" : "") +
-      '<p class="fb-instr" id="fb-instr">Type the definition to continue.</p></div>';
+      '<p class="fb-instr" id="fb-instr">' + (raw ? "Underlined words were missing or different. " : "") +
+      "Type it exactly to continue.</p></div>";
     $("blank").className = "blank" + (cls === "new" ? "" : " " + cls);
     setActions("copy");
     renderHint();
-    input.placeholder = "Type it as shown above";
+    input.placeholder = "Type it exactly as shown";
     setAnswer("");
     focusInput();
-    Sound.play(cls === "new" ? "new" : "bad");
+    Sound.play(cls === "new" ? "new" : cls === "warn" ? "almost" : "bad");
   }
 
   function checkCopy() {
-    const hit = coverage(tokens(input.value), P.card.keys);
-    const missing = P.card.keys.filter((k, i) => !hit[i]);
-    if (!missing.length || (!P.card.keys.length && sameText(input.value, P.card.def))) { finishCopy(); return; }
+    if (sameText(input.value, P.card.def)) { finishCopy(); return; }
     const b = $("blank");
     b.classList.remove("shake");
     void b.offsetWidth;
     b.classList.add("shake");
+    const typed = tokens(input.value), want = tokens(P.card.def);
+    let k = 0;
+    while (k < want.length && typed[k] === want[k]) k++;
     const instr = $("fb-instr");
-    if (instr) instr.textContent = "Still missing: " + missing.join(", ");
+    if (instr) instr.textContent = k < want.length ? "Not exact yet. Check from “" + want[k] + "”." : "Not exact yet. Remove the extra words at the end.";
   }
   function finishCopy() {
     if (P.phase !== "copy") return;
