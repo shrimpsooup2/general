@@ -151,8 +151,16 @@
           if (n.head) n.head.done = true;
           this.units -= n.type === 'hold' ? 2 : 1;
         }
-        const first = this.notes.find((n) => !n.done && n.type !== 'soul' && n.type !== 'zip');
-        if (first) start = clamp(Math.round(first.x), 0, K.MAX_X);
+        // Start under the first note meant for the paddle, in the nearest lane that's clear.
+        const first = this.notes.find((n) => !n.done && n.type !== 'soul' && n.type !== 'zip' && n.by !== 'soul');
+        const want = first ? clamp(Math.round(first.x), 0, K.MAX_X) : start;
+        const t0 = this.from - 1.6;
+        const clear = (x) => !this.obstacles.some((o) => o.t < t0 + 0.3 && o.t2 > t0 && x - K.PADDLE_HALF < o.hi && x + K.PADDLE_HALF > o.lo);
+        start = want;
+        for (let d = 0; d <= K.MAX_X; d++) {
+          if (want - d >= 0 && clear(want - d)) { start = want - d; break; }
+          if (want + d <= K.MAX_X && clear(want + d)) { start = want + d; break; }
+        }
       }
       this.t = opts.startTime != null ? opts.startTime : this.from - 1.6;
       this.state = 'play'; // play | dead | done
@@ -257,12 +265,15 @@
     }
 
     // --- simulation ----------------------------------------------------------------------------
+    // Steps land on a fixed 2 ms grid whatever the frame rate, so the same inputs always give
+    // the same result; leftover time waits for the next call.
     advance(target) {
       const q = this.queue;
+      const end = Math.floor(target / K.STEP + 1e-9) * K.STEP;
       while (this.state === 'play') {
         while (q.length && q[0].t <= this.t) this.apply(q.shift());
-        if (this.t >= target) break;
-        let next = Math.min(target, this.t + K.STEP);
+        if (this.t >= end - 1e-9) break;
+        let next = Math.min(end, (Math.floor(this.t / K.STEP + 1e-6) + 1) * K.STEP);
         if (q.length && q[0].t < next) next = q[0].t;
         this.step(this.t, next);
         this.t = next;
@@ -348,7 +359,7 @@
         else if (off <= P) return this.judge(n, 'perfect', t, st, null, by);
         else if (off <= G) return this.judge(n, 'good', t, st, null, by);
       }
-      if (off > P && st.early) return this.judge(n, 'good', t, st, null, st.by);
+      if (off > P && st.early) { st.wasEarly = true; return this.judge(n, 'good', t, st, null, st.by); }
       if (off > G) this.judge(n, 'miss', t, st);
     }
 
@@ -393,7 +404,7 @@
       if (grade === 'miss') this.breakCombo(t);
       else this.bump();
       if (by === 'soul' && grade !== 'miss') S.soulCatches++;
-      this.emit({ type: 'judge', t, note: n, grade, by, part: part || (n.type === 'hold' ? 'head' : 'note') });
+      this.emit({ type: 'judge', t, note: n, grade, by, early: !!st.wasEarly || t < n.t, part: part || (n.type === 'hold' ? 'head' : 'note') });
     }
 
     bump() {

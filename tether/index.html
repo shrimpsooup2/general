@@ -250,7 +250,7 @@ details.settings[open] summary::after { content: " –"; }
         <dl class="keys">
           <div><dt><kbd>←</kbd><kbd>→</kbd></dt><dd><b>Move</b> one lane. Press the other way mid-move to turn back; tap fast to hover between lanes.</dd></div>
           <div><dt><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Snap</b>: teleport one lane. It crosses zips and slips through gaps a move can't.</dd></div>
-          <div><dt><kbd>Ctrl</kbd> / <kbd>Space</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Soul</b>: it stretches out on an elastic tether and catches any note, straight through blocks and walls. The farther it goes, the slower it pulls. Let go and it springs back past the paddle. The paddle stays put meanwhile.</dd></div>
+          <div><dt><kbd>Ctrl</kbd> / <kbd>Space</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Soul</b>: it stretches out on an elastic tether and catches notes, gems and holds, straight through blocks and walls (zips still need a snap). The farther it goes, the slower it pulls. Let go and it springs back past the paddle. The paddle stays put meanwhile.</dd></div>
           <div><dt><kbd>Esc</kbd> <kbd>R</kbd></dt><dd>Pause · restart</dd></div>
         </dl>
         <p class="note-mac">A and D work as arrows. On a Mac, Ctrl + arrows switches desktops, so use Space for the soul.</p>
@@ -1133,10 +1133,9 @@ details.settings[open] summary::after { content: " –"; }
         }
         const off = ev.t - n.t;
         addJudge(ev.grade === 'perfect' ? 'PERFECT' : 'GOOD', ev.grade === 'perfect' ? '#ffffff' : C.gem,
-          ev.grade === 'good' && ev.part !== 'body' ? (off < 0 ? 'EARLY' : 'LATE') : '');
+          ev.grade === 'good' && ev.part !== 'body' ? (ev.early || off < 0 ? 'EARLY' : 'LATE') : '');
         if (ev.part === 'body') { burst(X(v, x), v.hitY, col, 10, 200, 0.45); break; }
-        const at0 = ev.by === 'soul' ? game.soul.x : x;
-        burst(X(v, at0), v.hitY, col, ev.grade === 'perfect' ? 16 : 9, 260, 0.5);
+        burst(X(v, x), v.hitY, col, ev.grade === 'perfect' ? 16 : 9, 260, 0.5);
         fx.lanes.push({ x, col, at: performance.now() });
         if (!runAudio) break;
         const at = soundAt(n.t);
@@ -1403,7 +1402,8 @@ details.settings[open] summary::after { content: " –"; }
   function drawTether(c, px, sx, y, stretch, vel) {
     const dx = sx - px, n = 14;
     const mid = Math.max(1.4, 6 - 1.25 * Math.abs(stretch));
-    const bow = -8 - Math.abs(dx) * 0.06 + clamp(vel * 0.5, -12, 12);
+    // Taut while it stretches out, slack while it snaps back, the same on either side.
+    const bow = -8 - Math.abs(dx) * 0.06 + clamp(vel * Math.sign(dx || 1) * 0.5, -12, 12);
     const top = [], bot = [];
     for (let i = 0; i <= n; i++) {
       const u = i / n, k = Math.sin(Math.PI * u);
@@ -1469,6 +1469,8 @@ details.settings[open] summary::after { content: " –"; }
       else if (down && code === 'KeyR') restart();
       return;
     }
+    // A soul key still held after play ends mustn't press the focused dialog button.
+    if (SOUL.has(code)) e.preventDefault();
     if (!down) return;
     if (screen === 'dead' || screen === 'failed') {
       if (code === 'KeyR' || (screen === 'failed' && code === 'Enter')) { e.preventDefault(); restart(); }
@@ -1557,7 +1559,7 @@ details.settings[open] summary::after { content: " –"; }
     ['hold', 'Hold and slide', 'Stay under it to the end.'],
     ['thin', 'Thin hold', 'On a divider. Tap ← → fast to hover.'],
     ['zip', 'Zip', 'Snap across it with Shift.'],
-    ['soul', 'Soul note', 'Only your soul can catch it. Your soul catches the others too.'],
+    ['soul', 'Soul note', 'Only your soul can catch it. It also catches notes, gems and holds.'],
     ['block', 'Block', 'Touch it and the run ends.'],
     ['phaseBlock', 'Dashed block', 'Snaps hop right over it.'],
     ['wall', 'Wall', "Can't be crossed. Snap through a gap."],

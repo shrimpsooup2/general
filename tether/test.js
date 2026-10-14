@@ -180,5 +180,31 @@ g = new E.Game(lv0, { from: sec.t, noFail: true });
 ok(g.t < sec.t && g.notes.every((n) => n.t >= sec.t || n.grade === 'skip'), 'practice skips notes before the section');
 g.advance(300);
 ok(g.stats.judged === g.units, 'practice run judges exactly the notes it kept');
+// 15 practicing from any section never starts inside a block
+for (const lv of L.LEVELS) {
+  const bad = [];
+  for (const sec of lv.chart.texts.filter((x) => x.title && x.t > 0.5)) {
+    const pg = new E.Game(lv, { from: sec.t });
+    pg.advance(pg.t + 0.3);
+    if (pg.state === 'dead') bad.push(sec.title);
+  }
+  ok(!bad.length, `${lv.name}: every practice section survives its first 0.3 s${bad.length ? ' (dies: ' + bad.join(', ') + ')' : ''}`);
+}
+
+// 16 the same inputs give the same judgements at any frame rate
+{
+  const lv = L.LEVELS[1];
+  const inputs = [];
+  for (let t = 0, d = 1; t < 40; t += 0.137 + (t % 0.05)) { inputs.push({ t, kind: 'dir', dir: d, down: true }); d = -d; }
+  const play = (fps) => {
+    const g2 = new E.Game(lv, { noFail: true });
+    inputs.forEach((i) => g2.input(Object.assign({}, i)));
+    const out = [];
+    for (let t = g2.t; t < 41; t += 1 / fps) { g2.advance(t); out.push(...g2.drain().filter((e) => e.type === 'judge').map((e) => e.note.id + e.grade)); }
+    return out.join();
+  };
+  ok(play(60) === play(144), 'judgements match at 60 and 144 fps');
+}
+
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);
