@@ -1,0 +1,1669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tether Dodge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Chakra+Petch:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: the playfield is a full-window canvas. Menus are one scrolling column laid over it;
+   in play the canvas is all there is. One deliberate dark look: an arcade cabinet at night. */
+:root {
+  --void: #06070f;
+  --deck: rgba(10, 12, 28, 0.86);
+  --deck-hi: rgba(20, 24, 50, 0.9);
+  --line: #252a4a;
+  --line-hi: #3a4170;
+  --ink: #eceeff;
+  --ink-2: #a5abcf;
+  --ink-3: #7177a0;
+  --tap: #5fe1ff;
+  --gem: #ffc14d;
+  --zip: #b6ff5c;
+  --soul: #b997ff;
+  --hazard: #ff3f6c;
+  --scrim: rgba(6, 7, 15, 0.72);
+  --font-display: "Unbounded", "Arial Black", "Segoe UI", system-ui, sans-serif;
+  --font-ui: "Chakra Petch", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font: 500 15px/1.5 var(--font-ui);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+canvas#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+button, input, select { font: inherit; color: inherit; }
+kbd {
+  display: inline-block;
+  min-width: 1.7em;
+  padding: 0.05em 0.45em;
+  border: 1px solid var(--line-hi);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  background: var(--deck-hi);
+  font: 600 0.78em/1.6 var(--font-mono);
+  text-align: center;
+  color: var(--ink);
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+}
+#menu { background: linear-gradient(180deg, rgba(6, 7, 15, 0.55), rgba(6, 7, 15, 0.9) 40%); }
+.column { max-width: 1060px; margin: 0 auto; padding-block: 40px 56px; display: grid; gap: 28px; }
+
+.masthead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; }
+.wordmark .sub { font-size: 0.32em; letter-spacing: 0.08em; color: var(--hazard); vertical-align: 0.9em; }
+.wordmark {
+  margin: 0;
+  font: 800 clamp(52px, 11vw, 124px)/0.86 var(--font-display);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.emblem { display: block; width: min(320px, 70vw); height: auto; margin-top: 10px; }
+.e-line { stroke: var(--line); stroke-width: 1; }
+.e-paddle { fill: var(--ink); }
+.e-tether { fill: none; stroke: var(--soul); stroke-width: 2; stroke-dasharray: 3 4; }
+.e-soul { fill: var(--soul); }
+.tag { margin: 0; max-width: 34ch; color: var(--ink-2); font-size: 16px; }
+.tag strong { color: var(--ink); font-weight: 600; }
+
+.levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+.card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  background: var(--deck);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+}
+.card:focus-within, .card:hover { border-color: var(--line-hi); }
+.card canvas { display: block; width: 100%; height: 132px; background: #080a18; }
+.card-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 18px; }
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tier { font: 700 11px/1 var(--font-display); letter-spacing: 0.18em; }
+.tier[data-tier="1"] { color: var(--tap); }
+.tier[data-tier="2"] { color: var(--gem); }
+.tier[data-tier="3"] { color: var(--hazard); }
+.pips { font: 600 12px/1 var(--font-mono); color: var(--ink-3); letter-spacing: 0.2em; }
+.card h2 { margin: 0; font: 700 24px/1.1 var(--font-display); letter-spacing: -0.01em; }
+.meta { margin: 0; font: 500 12.5px/1.4 var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.blurb { margin: 0; color: var(--ink-2); flex: 1; }
+.best { margin: 0; font: 500 12.5px/1.4 var(--font-mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.best b { color: var(--ink); font-weight: 700; }
+.play {
+  margin-top: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border: 0; border-radius: 6px;
+  background: var(--ink); color: var(--void);
+  font: 700 14px/1 var(--font-display); letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.play kbd { background: transparent; color: var(--void); border-color: rgba(6, 7, 15, 0.35); }
+.play:hover, .play:focus-visible { background: var(--tap); }
+:focus-visible { outline: 2px solid var(--tap); outline-offset: 2px; }
+
+.info { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; }
+@media (max-width: 820px) { .info { grid-template-columns: minmax(0, 1fr); } }
+.panel {
+  background: var(--deck);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 20px;
+  min-width: 0;
+  backdrop-filter: blur(6px);
+}
+.panel h3 { margin: 0 0 12px; font: 700 12px/1 var(--font-display); letter-spacing: 0.2em; color: var(--ink-2); }
+.keys { display: grid; gap: 12px; margin: 0; }
+.keys div { display: grid; grid-template-columns: 12.5em minmax(0, 1fr); gap: 14px; align-items: baseline; }
+@media (max-width: 460px) { .keys div { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.keys dt { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--ink-3); font-size: 13px; }
+.keys dd { margin: 0; color: var(--ink-2); }
+.keys dd b { color: var(--ink); font-weight: 600; }
+.note-mac { margin: 14px 0 0; font-size: 13px; color: var(--ink-3); }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px 16px; margin: 0; padding: 0; list-style: none; }
+.legend li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; align-items: center; }
+.legend canvas { width: 58px; height: 40px; display: block; border-radius: 4px; background: #080a18; }
+.legend b { display: block; font-weight: 600; color: var(--ink); font-size: 14px; line-height: 1.25; }
+.legend span { display: block; color: var(--ink-3); font-size: 12.5px; line-height: 1.3; }
+
+details.settings summary {
+  cursor: pointer; list-style: none;
+  font: 700 12px/1 var(--font-display); letter-spacing: 0.2em; color: var(--ink-2);
+}
+details.settings summary::-webkit-details-marker { display: none; }
+details.settings summary::after { content: " +"; color: var(--ink-3); }
+details.settings[open] summary::after { content: " –"; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 24px; margin-top: 16px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 14px; }
+.field output { font: 500 12.5px/1.5 var(--font-mono); color: var(--tap); font-variant-numeric: tabular-nums; }
+.field small { color: var(--ink-3); font-size: 12.5px; line-height: 1.35; }
+.field input[type="range"] { width: 100%; accent-color: var(--tap); }
+.field select { background: var(--deck-hi); border: 1px solid var(--line-hi); border-radius: 5px; padding: 6px 8px; }
+.check { display: flex; gap: 10px; align-items: center; font-weight: 600; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--tap); }
+.foot { margin: 0; color: var(--ink-3); font-size: 13px; }
+.foot code { font: 500 12.5px var(--font-mono); color: var(--ink-2); }
+.touch-note {
+  margin: 0; padding: 12px 16px; border: 1px solid var(--gem); border-radius: 8px;
+  color: var(--gem); background: rgba(255, 193, 77, 0.08);
+}
+
+.dialog { display: grid; place-items: center; background: var(--scrim); }
+.dialog .panel { width: min(520px, 100%); padding: 26px 26px 24px; display: grid; gap: 18px; background: rgba(10, 12, 28, 0.94); }
+.eyebrow { margin: 0; font: 700 11px/1 var(--font-display); letter-spacing: 0.2em; color: var(--ink-3); }
+.dialog h2 { margin: 0; font: 800 34px/1 var(--font-display); letter-spacing: -0.01em; }
+.dialog p { margin: 0; color: var(--ink-2); }
+.result-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 22px; align-items: center; }
+.grade { grid-row: span 2; font: 800 96px/0.9 var(--font-display); }
+.grade[data-g="S"] { color: var(--gem); }
+.grade[data-g="A"] { color: var(--tap); }
+.grade[data-g="B"] { color: var(--zip); }
+.grade[data-g="C"], .grade[data-g="D"] { color: var(--ink-2); }
+.score { font: 700 34px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge {
+  font: 700 10.5px/1 var(--font-display); letter-spacing: 0.14em;
+  padding: 5px 8px; border-radius: 4px; border: 1px solid currentColor;
+}
+.badge.fc { color: var(--gem); }
+.badge.best { color: var(--zip); }
+.badge.practice { color: var(--ink-3); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.stats div { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+.stats dt { font-size: 12px; color: var(--ink-3); }
+.stats dd { margin: 0; font: 700 17px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.breakdown { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.breakdown th, .breakdown td { padding: 5px 4px; text-align: right; border-bottom: 1px solid var(--line); }
+.breakdown th:first-child, .breakdown td:first-child { text-align: left; }
+.breakdown th { font-weight: 600; color: var(--ink-3); font-size: 12px; }
+.breakdown td { font-family: var(--font-mono); font-size: 13px; }
+.breakdown td.p { color: var(--tap); }
+.breakdown td.g { color: var(--gem); }
+.breakdown td.m { color: var(--hazard); }
+.breakdown th.what { text-align: left; padding-left: 12px; }
+.breakdown td.what { color: var(--ink-3); font-family: var(--font-ui); font-size: 12.5px; text-align: left; padding-left: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions button {
+  flex: 1 1 140px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--line-hi); border-radius: 6px;
+  background: var(--deck-hi);
+  font-weight: 600; cursor: pointer;
+}
+.actions button.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
+.actions button.primary kbd { color: var(--void); background: transparent; border-color: rgba(6, 7, 15, 0.35); }
+.actions button:hover { border-color: var(--tap); }
+.jump { display: grid; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button {
+  padding: 6px 10px; border: 1px solid var(--line-hi); border-radius: 5px; background: transparent;
+  font: 700 10.5px/1 var(--font-display); letter-spacing: 0.12em; color: var(--ink-2); cursor: pointer;
+}
+.chips button:hover, .chips button:focus-visible { color: var(--ink); border-color: var(--soul); }
+.chips button[aria-current="true"] { color: var(--soul); border-color: var(--soul); }
+.failbar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.failbar i { display: block; height: 100%; background: var(--hazard); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Tether playfield"></canvas>
+
+<main id="menu" class="screen">
+  <div class="column">
+    <header class="masthead">
+      <div>
+        <h1 class="wordmark">TETHER <span class="sub">DODGE</span></h1>
+        <svg class="emblem" viewBox="0 0 320 34" aria-hidden="true">
+          <line class="e-line" x1="2" y1="30" x2="318" y2="30"></line>
+          <rect class="e-paddle" x="18" y="24" width="64" height="9" rx="4.5"></rect>
+          <path class="e-tether" d="M50 24 Q 140 -6 236 22"></path>
+          <rect class="e-soul" x="214" y="22" width="44" height="9" rx="4.5"></rect>
+        </svg>
+      </div>
+      <p class="tag"><strong>A five-lane dodging prototype.</strong> Hazards land on the beat. Get out of the way, snap through gaps, and fling your soul to smash the glass in your path.</p>
+    </header>
+
+    <p class="touch-note" id="touch-note" hidden>This demo is played with a keyboard: arrows, Shift and Ctrl or Space.</p>
+
+    <section class="levels" id="levels" aria-label="Levels"></section>
+
+    <section class="info">
+      <div class="panel">
+        <h3>CONTROLS</h3>
+        <dl class="keys">
+          <div><dt><kbd>←</kbd><kbd>→</kbd></dt><dd><b>Move</b> one lane. Press again mid-move to go two; press the other way to turn back.</dd></div>
+          <div><dt><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Snap</b>: teleport one lane, instantly. It slips through gaps too short to move through, passes dashed walls and hops dashed blocks.</dd></div>
+          <div><dt><kbd>Ctrl</kbd> / <kbd>Space</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Soul</b>: it stretches out on an elastic tether, straight through every hazard, and <b>breaks glass</b> it touches. Hold Ctrl alone to guard your own lane. Let go of the arrow and it springs back past the paddle, fast enough to break hardglass. The paddle can't move while the soul is out.</dd></div>
+          <div><dt><kbd>Esc</kbd> <kbd>R</kbd></dt><dd>Pause · restart</dd></div>
+        </dl>
+        <p class="note-mac">A and D work as arrows. On a Mac, Ctrl + arrows switches desktops, so use Space for the soul.</p>
+      </div>
+      <div class="panel">
+        <h3>WHAT'S COMING</h3>
+        <ul class="legend" id="legend"></ul>
+      </div>
+    </section>
+
+    <details class="panel settings" id="settings">
+      <summary>SETTINGS</summary>
+      <div class="fields">
+        <div class="field">
+          <label for="set-scroll">Scroll speed <output id="out-scroll"></output></label>
+          <input type="range" id="set-scroll" min="0.6" max="2" step="0.1">
+          <small>How fast hazards fall. Faster spreads them out.</small>
+        </div>
+        <div class="field">
+          <label for="set-offset">Audio offset <output id="out-offset"></output></label>
+          <input type="range" id="set-offset" min="-150" max="150" step="5">
+          <small>Raise it if hazards land before you hear the beat (Bluetooth headphones need more).</small>
+        </div>
+        <div class="field">
+          <label for="set-rate">Song speed</label>
+          <select id="set-rate">
+            <option value="0.75">75%: practice</option>
+            <option value="0.85">85%: practice</option>
+            <option value="1">100%</option>
+          </select>
+          <small>Slower songs don't record a best score.</small>
+        </div>
+        <div class="field">
+          <label for="set-volume">Volume <output id="out-volume"></output></label>
+          <input type="range" id="set-volume" min="0" max="100" step="5">
+          <label class="check" for="set-nofail"><input type="checkbox" id="set-nofail"> Unlimited hearts: hits only reset your multiplier</label>
+        </div>
+      </div>
+    </details>
+
+    <p class="foot">The dodging version of Tether. Charts live in <code>levels.js</code>, the simulation in <code>engine.js</code>.</p>
+  </div>
+</main>
+
+<section id="pause" class="screen dialog" hidden>
+  <div class="panel" role="dialog" aria-labelledby="pause-title">
+    <p class="eyebrow" id="pause-level"></p>
+    <h2 id="pause-title">Paused</h2>
+    <div class="jump">
+      <p class="eyebrow">PRACTICE FROM</p>
+      <div class="chips" id="pause-sections"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btn-resume">Resume <kbd>Esc</kbd></button>
+      <button id="btn-restart-p">Restart <kbd>R</kbd></button>
+      <button id="btn-menu-p">Levels <kbd>Q</kbd></button>
+    </div>
+  </div>
+</section>
+
+<section id="failed" class="screen dialog" hidden>
+  <div class="panel" role="dialog" aria-labelledby="fail-title">
+    <p class="eyebrow" id="fail-level"></p>
+    <h2 id="fail-title">Run ended</h2>
+    <p id="fail-why"></p>
+    <div class="failbar"><i id="fail-bar"></i></div>
+    <div class="actions">
+      <button class="primary" id="btn-retry-f">Retry <kbd>R</kbd></button>
+      <button id="btn-section-f"><span>From <span id="fail-section"></span></span> <kbd>S</kbd></button>
+      <button id="btn-nofail-f">Retry with unlimited hearts <kbd>N</kbd></button>
+      <button id="btn-menu-f">Levels <kbd>Esc</kbd></button>
+    </div>
+  </div>
+</section>
+
+<section id="results" class="screen dialog" hidden>
+  <div class="panel" role="dialog" aria-labelledby="r-score">
+    <p class="eyebrow" id="r-level"></p>
+    <div class="result-head">
+      <div class="grade" id="r-grade"></div>
+      <div class="score" id="r-score"></div>
+      <div class="badges" id="r-badges"></div>
+    </div>
+    <dl class="stats">
+      <div><dt>Hits</dt><dd id="r-hits"></dd></div>
+      <div><dt>Longest clean run</dt><dd id="r-streak"></dd></div>
+      <div><dt>Soul out</dt><dd id="r-frozen"></dd></div>
+    </dl>
+    <table class="breakdown">
+      <thead><tr><th>Style</th><th>Count</th><th class="what">What it is</th></tr></thead>
+      <tbody id="r-rows"></tbody>
+    </table>
+    <div class="actions">
+      <button class="primary" id="btn-retry-r">Retry <kbd>R</kbd></button>
+      <button id="btn-next-r">Next level <kbd>N</kbd></button>
+      <button id="btn-menu-r">Levels <kbd>Esc</kbd></button>
+    </div>
+  </div>
+</section>
+
+<script src="engine.js"></script>
+<script src="levels.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { K, Game, compile, soulStep, pathX, grade: gradeOf, clamp } = window.TetherEngine;
+  const LEVELS = window.TetherLevels.LEVELS;
+  const $ = (id) => document.getElementById(id);
+
+  // ---------------------------------------------------------------------------------------------
+  // Storage (per-browser conveniences only)
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } },
+  };
+  const settings = Object.assign({ scroll: 1, offset: 0, rate: 1, volume: 80, noFail: false }, store.get('tether-dodge.settings.v1', {}));
+  const best = store.get('tether-dodge.best.v1', {});
+
+  // Colours come from the CSS tokens so there's one palette.
+  const css = getComputedStyle(document.documentElement);
+  const C = {};
+  ['void', 'ink', 'ink-2', 'ink-3', 'line', 'tap', 'gem', 'zip', 'soul', 'hazard'].forEach((k) => { C[k] = css.getPropertyValue('--' + k).trim(); });
+  function rgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  const FONT_D = '"Unbounded", "Arial Black", sans-serif';
+  const FONT_U = '"Chakra Petch", "Segoe UI", sans-serif';
+  const FONT_M = '"JetBrains Mono", ui-monospace, Menlo, monospace';
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------------------------------------------------------------------------------------------
+  // Synth: every sound is generated, nothing is loaded.
+  const NOTE = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
+  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function chordOf(name) {
+    const m = /^([A-G][#b]?)(m?)$/.exec(name);
+    return { root: NOTE[m[1]], third: m[2] ? 3 : 4 };
+  }
+
+  const Synth = {
+    ctx: null, master: null, sfx: null, noise: null, run: null,
+    init(offline) {
+      if (this.ctx && !offline) return this.ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = (this.ctx = offline || new AC({ latencyHint: 'interactive' }));
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.15;
+      this.master = ctx.createGain();
+      this.master.connect(comp).connect(ctx.destination);
+      this.sfx = ctx.createGain();
+      this.sfx.connect(this.master);
+      const len = ctx.sampleRate;
+      this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = this.noise.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.setVolume(settings.volume);
+      return ctx;
+    },
+    setVolume(v) { if (this.master) this.master.gain.value = Math.pow(v / 100, 1.6) * 0.9; },
+    newRun() {
+      const ctx = this.ctx;
+      if (this.run) { try { this.run.out.disconnect(); } catch (e) { /* already gone */ } }
+      const bus = ctx.createGain(), filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 20000;
+      bus.connect(filter).connect(this.master);
+      this.run = { bus, filter, out: filter, drones: new Map() };
+      return this.run;
+    },
+    endRun(dying) {
+      const r = this.run;
+      if (!r) return;
+      const now = this.ctx.currentTime;
+      if (dying) {
+        r.filter.frequency.cancelScheduledValues(now);
+        r.filter.frequency.setValueAtTime(r.filter.frequency.value, now);
+        r.filter.frequency.exponentialRampToValueAtTime(140, now + 0.7);
+        r.bus.gain.setTargetAtTime(0, now + 0.2, 0.25);
+      } else {
+        r.bus.gain.setTargetAtTime(0, now, 0.08);
+      }
+      const out = r.out;
+      setTimeout(() => { try { out.disconnect(); } catch (e) { /* gone */ } }, dying ? 1600 : 400);
+      this.run = null;
+    },
+    env(g, at, a, peak, d) {
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(peak, at + a);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + a + d);
+    },
+    osc(type, freq, at, stop) {
+      const o = this.ctx.createOscillator();
+      o.type = type; o.frequency.setValueAtTime(freq, at); o.start(at); o.stop(stop);
+      return o;
+    },
+    noiseSrc(at, stop) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noise; n.start(at, Math.random() * 0.6); n.stop(stop);
+      return n;
+    },
+    filter(type, freq, q) {
+      const f = this.ctx.createBiquadFilter();
+      f.type = type; f.frequency.value = freq; if (q != null) f.Q.value = q;
+      return f;
+    },
+    gain() { return this.ctx.createGain(); },
+
+    kick(bus, at, v) {
+      const o = this.osc('sine', 150, at, at + 0.4), g = this.gain();
+      o.frequency.exponentialRampToValueAtTime(44, at + 0.11);
+      this.env(g, at, 0.003, 0.95 * v, 0.34);
+      o.connect(g).connect(bus);
+    },
+    snare(bus, at, v) {
+      const n = this.noiseSrc(at, at + 0.24), f = this.filter('bandpass', 1900, 0.7), g = this.gain();
+      this.env(g, at, 0.002, 0.42 * v, 0.17);
+      n.connect(f).connect(g).connect(bus);
+      const o = this.osc('triangle', 220, at, at + 0.12), g2 = this.gain();
+      o.frequency.exponentialRampToValueAtTime(140, at + 0.08);
+      this.env(g2, at, 0.002, 0.28 * v, 0.08);
+      o.connect(g2).connect(bus);
+    },
+    hat(bus, at, v, open) {
+      const n = this.noiseSrc(at, at + (open ? 0.3 : 0.08)), f = this.filter('highpass', 7600), g = this.gain();
+      this.env(g, at, 0.001, 0.13 * v, open ? 0.2 : 0.035);
+      n.connect(f).connect(g).connect(bus);
+    },
+    bass(bus, at, midi, dur, v) {
+      const o = this.osc('sawtooth', mtof(midi), at, at + dur + 0.08), s = this.osc('sine', mtof(midi - 12), at, at + dur + 0.08);
+      const f = this.filter('lowpass', 1000, 5), g = this.gain(), gs = this.gain();
+      f.frequency.setValueAtTime(1100, at);
+      f.frequency.exponentialRampToValueAtTime(240, at + Math.max(0.06, dur * 0.8));
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.2 * v, at + 0.006);
+      g.gain.setValueAtTime(0.2 * v, at + dur * 0.85);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.05);
+      gs.gain.value = 0.9;
+      o.connect(f); s.connect(gs).connect(f); f.connect(g).connect(bus);
+    },
+    pad(bus, at, midis, dur, v) {
+      const f = this.filter('lowpass', 1300, 0.4), g = this.gain();
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.045 * v, at + Math.min(0.35, dur * 0.3));
+      g.gain.setValueAtTime(0.045 * v, at + dur * 0.8);
+      g.gain.linearRampToValueAtTime(0, at + dur + 0.25);
+      for (const m of midis) for (const det of [-8, 8]) {
+        const o = this.osc('sawtooth', mtof(m), at, at + dur + 0.3);
+        o.detune.value = det;
+        o.connect(f);
+      }
+      f.connect(g).connect(bus);
+    },
+    arp(bus, at, midi, v) {
+      const o = this.osc('square', mtof(midi), at, at + 0.2), f = this.filter('lowpass', 2600, 1), g = this.gain();
+      this.env(g, at, 0.003, 0.045 * v, 0.11);
+      o.connect(f).connect(g).connect(bus);
+    },
+    pluck(bus, at, midi, v) {
+      const o = this.osc('triangle', mtof(midi), at, at + 0.4), o2 = this.osc('sawtooth', mtof(midi), at, at + 0.4);
+      const f = this.filter('lowpass', 5000, 2), g = this.gain(), g2 = this.gain();
+      f.frequency.setValueAtTime(5200, at);
+      f.frequency.exponentialRampToValueAtTime(900, at + 0.2);
+      g2.gain.value = 0.35;
+      this.env(g, at, 0.002, 0.2 * v, 0.28);
+      o.connect(f); o2.connect(g2).connect(f); f.connect(g).connect(bus);
+    },
+    bell(bus, at, midi, v) {
+      const fr = mtof(midi), c = this.osc('sine', fr, at, at + 1), m = this.osc('sine', fr * 3.5, at, at + 1);
+      const mi = this.gain(), g = this.gain();
+      mi.gain.setValueAtTime(fr * 2.2, at);
+      mi.gain.exponentialRampToValueAtTime(1, at + 0.7);
+      m.connect(mi).connect(c.frequency);
+      this.env(g, at, 0.003, 0.15 * v, 0.85);
+      c.connect(g).connect(bus);
+    },
+    zap(bus, at, midi) {
+      const o = this.osc('sawtooth', mtof(midi - 12), at, at + 0.2), f = this.filter('bandpass', 2400, 1.2), g = this.gain();
+      o.frequency.exponentialRampToValueAtTime(mtof(midi + 7), at + 0.07);
+      this.env(g, at, 0.002, 0.2, 0.13);
+      o.connect(f).connect(g).connect(bus);
+      const n = this.noiseSrc(at, at + 0.1), hf = this.filter('highpass', 3200), gn = this.gain();
+      this.env(gn, at, 0.001, 0.08, 0.06);
+      n.connect(hf).connect(gn).connect(bus);
+    },
+    whoosh(at) {
+      const n = this.noiseSrc(at, at + 0.16), f = this.filter('bandpass', 600, 1.6), g = this.gain();
+      f.frequency.setValueAtTime(600, at);
+      f.frequency.exponentialRampToValueAtTime(5200, at + 0.08);
+      this.env(g, at, 0.002, 0.11, 0.1);
+      n.connect(f).connect(g).connect(this.sfx);
+    },
+    twang(at, stretch) {
+      const amt = clamp(Math.abs(stretch) / 3, 0.3, 1);
+      const o = this.osc('triangle', 300 + 260 * amt, at, at + 0.4), f = this.filter('lowpass', 2600, 4), g = this.gain();
+      o.frequency.exponentialRampToValueAtTime(110, at + 0.24);
+      const lfo = this.osc('sine', 24, at, at + 0.4), depth = this.gain();
+      depth.gain.value = 40 * amt;
+      lfo.connect(depth).connect(o.frequency);
+      this.env(g, at, 0.003, 0.11 * amt, 0.3);
+      o.connect(f).connect(g).connect(this.sfx);
+    },
+    pan(bus, x) {
+      if (!this.ctx.createStereoPanner) return bus;
+      const p = this.ctx.createStereoPanner();
+      p.pan.value = clamp((x - 2) * 0.3, -0.8, 0.8);
+      p.connect(bus);
+      return p;
+    },
+    // Two rim ticks count a beam in; the second is a fifth higher.
+    tick(bus, at, x, hi) {
+      const o = this.osc('square', hi ? 1320 : 880, at, at + 0.06), f = this.filter('bandpass', hi ? 1320 : 880, 6), g = this.gain();
+      this.env(g, at, 0.001, 0.12, 0.04);
+      o.connect(f).connect(g).connect(this.pan(bus, x));
+    },
+    beamFire(bus, at, x) {
+      const o = this.osc('sawtooth', 1800, at, at + 0.25), f = this.filter('lowpass', 3000, 3), g = this.gain();
+      o.frequency.exponentialRampToValueAtTime(120, at + 0.18);
+      this.env(g, at, 0.002, 0.16, 0.2);
+      o.connect(f).connect(g).connect(this.pan(bus, x));
+    },
+    chime(bus, at, x, midi) {
+      const o = this.osc('sine', mtof(midi), at, at + 0.6), o2 = this.osc('sine', mtof(midi) * 2.76, at, at + 0.4), g = this.gain(), g2 = this.gain();
+      this.env(g, at, 0.002, 0.07, 0.5);
+      this.env(g2, at, 0.002, 0.03, 0.25);
+      const out = this.pan(bus, x);
+      o.connect(g).connect(out); o2.connect(g2).connect(out);
+    },
+    shatter(bus, at, x, hard) {
+      const out = this.pan(bus, x);
+      const n = this.noiseSrc(at, at + 0.5), f = this.filter('highpass', 3500), g = this.gain();
+      this.env(g, at, 0.001, hard ? 0.4 : 0.3, 0.32);
+      n.connect(f).connect(g).connect(out);
+      [2093, 2637, 3136, 3951].forEach((fr, i) => {
+        const o = this.osc('sine', fr * (hard ? 0.75 : 1), at + i * 0.012, at + 0.5), gi = this.gain();
+        this.env(gi, at + i * 0.012, 0.001, 0.05, 0.35);
+        o.connect(gi).connect(out);
+      });
+    },
+    tink(bus, at, x) {
+      const o = this.osc('triangle', 2400, at, at + 0.12), g = this.gain();
+      this.env(g, at, 0.001, 0.08, 0.08);
+      o.connect(g).connect(this.pan(bus, x));
+    },
+    clank(at) {
+      const g = this.gain(), f = this.filter('lowpass', 1800, 2);
+      this.env(g, at, 0.001, 0.1, 0.09);
+      for (const fr of [180, 271]) this.osc('square', fr, at, at + 0.14).connect(f);
+      f.connect(g).connect(this.sfx);
+    },
+    crash(at, small) {
+      const n = this.noiseSrc(at, at + 1.8), f = this.filter('lowpass', 7000, 0.6), g = this.gain();
+      f.frequency.setValueAtTime(7000, at);
+      f.frequency.exponentialRampToValueAtTime(150, at + (small ? 0.35 : 1.4));
+      this.env(g, at, 0.002, small ? 0.3 : 0.5, small ? 0.35 : 1.6);
+      n.connect(f).connect(g).connect(this.sfx);
+      const o = this.osc('sine', 70, at, at + 0.6), g2 = this.gain();
+      o.frequency.exponentialRampToValueAtTime(34, at + 0.4);
+      this.env(g2, at, 0.002, 0.6, 0.45);
+      o.connect(g2).connect(this.sfx);
+    },
+    drone(bus, at, midi, until) {
+      const f = this.filter('lowpass', 1500, 1), g = this.gain();
+      g.gain.value = 0;
+      for (const det of [-6, 6]) {
+        const o = this.osc('sawtooth', mtof(midi), at, until + 0.3);
+        o.detune.value = det;
+        o.connect(f);
+      }
+      f.connect(g).connect(bus);
+      return g;
+    },
+  };
+
+  // Each level's backing track, built from its tempo, chords and section list.
+  const LAYERS = {
+    intro: { pad: 0.8, hat8: 0.5, kick1: 0.6 },
+    groove: { pad: 1, kick: 1, hat8: 0.8, bass8: 1 },
+    full: { pad: 1, kick: 1, snare: 1, hat8: 1, open: 1, bass8: 1, oct: 1 },
+    drive: { pad: 1, kick: 1, snare: 1, hat16: 1, open: 1, bass8: 1, oct: 1, arp: 1 },
+    break: { pad: 1.2, kick13: 0.7, arp8: 0.7, bassLong: 1 },
+    outro: { pad: 1, kick1: 0.7, fade: 1 },
+  };
+  const KITS = {
+    four: { kick: [0, 1, 2, 3], snare: [1, 3], ghost: [] },
+    break: { kick: [0, 0.75, 2.5], snare: [1, 3], ghost: [1.75, 3.75] },
+  };
+  const songCache = new Map();
+  function buildSong(level) {
+    if (songCache.has(level.id)) return songCache.get(level.id);
+    const m = level.music, spb = 60 / level.bpm, kit = KITS[m.kit] || KITS.four, ev = [];
+    const at = (beat, fn, ...args) => ev.push({ t: beat * spb, fn, args });
+    const outroAt = (m.sections.find((s) => s[1] === 'outro') || [m.bars])[0];
+    for (let bar = 0; bar < m.bars; bar++) {
+      let name = m.sections[0][1];
+      for (const [b, n] of m.sections) if (bar >= b) name = n;
+      const L = LAYERS[name], b0 = bar * 4;
+      const ch = chordOf(m.prog[bar % m.prog.length]);
+      const fade = L.fade ? 1 - ((bar - outroAt) / Math.max(1, m.bars - outroAt)) * 0.75 : 1;
+      const bassRoot = 36 + ch.root, padRoot = 57 + ((ch.root - 9 + 12) % 12);
+      if (L.pad) at(b0, 'pad', [padRoot, padRoot + ch.third, padRoot + 7, padRoot + 12], 4 * spb, L.pad * fade);
+      if (L.kick) kit.kick.forEach((k) => at(b0 + k, 'kick', L.kick));
+      if (L.kick1) at(b0, 'kick', L.kick1 * fade);
+      if (L.kick13) { at(b0, 'kick', L.kick13); at(b0 + 2, 'kick', L.kick13 * 0.8); }
+      if (L.snare) {
+        kit.snare.forEach((s) => at(b0 + s, 'snare', 1));
+        kit.ghost.forEach((s) => at(b0 + s, 'snare', 0.35));
+        if (bar % 4 === 3) { at(b0 + 3.5, 'snare', 0.5); at(b0 + 3.75, 'snare', 0.75); }
+      }
+      if (L.hat8) for (let i = 0; i < 8; i++) at(b0 + i * 0.5, 'hat', L.hat8 * (i % 2 ? 1 : 0.6) * fade, false);
+      if (L.hat16) for (let i = 0; i < 16; i++) at(b0 + i * 0.25, 'hat', i % 4 === 2 ? 1 : 0.55, false);
+      if (L.open) for (let i = 0; i < 4; i++) at(b0 + i + 0.5, 'hat', 0.8, true);
+      if (L.bass8) for (let i = 0; i < 8; i++) at(b0 + i * 0.5, 'bass', bassRoot + (L.oct && i % 2 ? 12 : 0), 0.45 * spb, 1);
+      if (L.bassLong) at(b0, 'bass', bassRoot, 3.9 * spb, 0.8);
+      const tones = [0, 7, 12, ch.third + 12, 12, 7, ch.third, 7];
+      if (L.arp) for (let i = 0; i < 16; i++) at(b0 + i * 0.25, 'arp', padRoot + 12 + tones[i % 8], 1);
+      if (L.arp8) for (let i = 0; i < 8; i++) at(b0 + i * 0.5, 'arp', padRoot + 12 + tones[i % 8], L.arp8);
+    }
+    // Hazard cues ride along with the music: beams count in and fire, glass chimes as it lands.
+    for (const o of level.chart.obstacles) {
+      const x = (o.x0 + o.x1) / 2;
+      if (o.kind === 'beam') {
+        ev.push({ t: o.t - o.warn, fn: 'tick', args: [x, false] });
+        ev.push({ t: o.t - o.warn / 2, fn: 'tick', args: [x, true] });
+        ev.push({ t: o.t, fn: 'beamFire', args: [x] });
+      } else if (o.kind === 'glass') {
+        ev.push({ t: o.t, fn: 'chime', args: [x, leadMidi(level, { beat: o.beat, x }) + 12] });
+      }
+    }
+    ev.sort((a, b) => a.t - b.t);
+    songCache.set(level.id, ev);
+    return ev;
+  }
+
+  // Every bonus plays a chord tone pitched by lane, so a stylish run plays a melody.
+  function leadMidi(level, note) {
+    const m = level.music, bar = Math.max(0, Math.floor((note.beat || 0) / 4));
+    const ch = chordOf(m.prog[bar % m.prog.length]);
+    const ladder = [0, ch.third, 7, 12, 12 + ch.third, 19, 24, 24 + ch.third, 31];
+    const x = note.x != null ? note.x : note.path[0].x;
+    return 57 + ((ch.root - 9 + 12) % 12) + ladder[clamp(Math.round(x * 2), 0, 8)];
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Clock: song time follows what's actually coming out of the speakers, smoothed with
+  // performance.now() so frames and key timestamps land on one timeline.
+  const Clock = {
+    startCtx: 0, rate: 1, anchorPerf: 0, anchorSong: 0, anchored: false,
+    begin(startCtx, rate) { this.startCtx = startCtx; this.rate = rate; this.anchored = false; },
+    raw() {
+      const c = Synth.ctx;
+      let ct = null;
+      if (c.getOutputTimestamp) {
+        const ts = c.getOutputTimestamp();
+        if (ts && ts.contextTime > 0 && ts.performanceTime > 0) ct = ts.contextTime + (performance.now() - ts.performanceTime) / 1000;
+      }
+      if (ct == null) ct = c.currentTime - (c.outputLatency || c.baseLatency || 0);
+      return (ct - this.startCtx) * this.rate - settings.offset / 1000;
+    },
+    sync(now) {
+      const r = this.raw(), p = this.at(now);
+      if (!this.anchored || Math.abs(r - p) > 0.04) { this.anchorPerf = now; this.anchorSong = r; this.anchored = true; }
+      else this.anchorSong += (r - p) * 0.05;
+    },
+    at(perf) { return this.anchorSong + ((perf - this.anchorPerf) / 1000) * this.rate; },
+    ctxTime(songT) { return this.startCtx + songT / this.rate; },
+  };
+
+  // ---------------------------------------------------------------------------------------------
+  // Drawing
+  const canvas = $('stage');
+  const g = canvas.getContext('2d');
+  let DPR = 1, W = 0, H = 0;
+  const view = { fieldX: 0, fieldW: 0, laneW: 0, hitY: 0, h: 0, pps: 1, approach: 1.5, now: 0 };
+  const X = (v, x) => v.fieldX + (x + 0.5) * v.laneW;
+  const Y = (v, t) => v.hitY - (t - v.now) * v.pps;
+
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    view.fieldW = Math.max(240, Math.min(W - 32, H * 0.62, 600));
+    view.laneW = view.fieldW / 5;
+    view.fieldX = Math.round((W - view.fieldW) / 2);
+    view.hitY = Math.round(H - Math.max(84, H * 0.16));
+    view.h = H;
+    setApproach();
+    sprites = makeSprites(view.laneW);
+  }
+  function setApproach() {
+    view.approach = 1.55 / settings.scroll;
+    view.pps = (view.hitY + 24) / view.approach;
+  }
+
+  function rr(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  // Shape painter, centred on (0, 0). Sprites bake it with a glow once per size.
+  const paint = {
+    capsule(c, w, h, col) {
+      rr(c, -w / 2, -h / 2, w, h, h / 2);
+      c.fillStyle = col; c.fill();
+      rr(c, -w / 2 + 3, -h / 2 + 2, w - 6, h / 2.4, h / 4);
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fill();
+    },
+  };
+  function sprite(kind, w, h, col, glow) {
+    const pad = glow + 3, cw = w + pad * 2, ch = h + pad * 2;
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil(cw * DPR); cv.height = Math.ceil(ch * DPR);
+    const c = cv.getContext('2d');
+    c.scale(DPR, DPR); c.translate(cw / 2, ch / 2);
+    if (glow) { c.shadowColor = col; c.shadowBlur = glow; paint[kind](c, w, h, col); c.shadowBlur = 0; }
+    paint[kind](c, w, h, col);
+    return { cv, w: cw, h: ch };
+  }
+  function stamp(c, sp, x, y, a) {
+    if (a != null) c.globalAlpha = a;
+    c.drawImage(sp.cv, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h);
+    if (a != null) c.globalAlpha = 1;
+  }
+  let sprites = null;
+  function makeSprites(lw) {
+    return {
+      paddle: sprite('capsule', 2 * K.PADDLE_HALF * lw, 11, '#ffffff', 18),
+      paddleSnap: sprite('capsule', 2 * K.PADDLE_HALF * lw, 11, C.zip, 22),
+      paddleDim: sprite('capsule', 2 * K.PADDLE_HALF * lw, 11, '#8a90b8', 6),
+      soulBody: sprite('capsule', 2 * K.SOUL_HALF * lw * 1.3, 11, C.soul, 22),
+      ghost: sprite('capsule', 2 * K.PADDLE_HALF * lw, 11, C.zip, 0),
+    };
+  }
+
+
+  function stripes(col, a) {
+    const p = document.createElement('canvas');
+    p.width = p.height = 14;
+    const c = p.getContext('2d');
+    c.strokeStyle = rgba(col, a); c.lineWidth = 4;
+    c.beginPath(); c.moveTo(-2, 16); c.lineTo(16, -2); c.moveTo(-9, 9); c.lineTo(9, -9); c.moveTo(5, 23); c.lineTo(23, 5); c.stroke();
+    return p;
+  }
+  const stripeSolid = stripes('#000000', 0.32), stripePhase = stripes(C.zip, 0.28);
+  const patterns = new WeakMap();
+  function patternFor(c, phase) {
+    let p = patterns.get(c);
+    if (!p) patterns.set(c, (p = { solid: c.createPattern(stripeSolid, 'repeat'), phase: c.createPattern(stripePhase, 'repeat') }));
+    return phase ? p.phase : p.solid;
+  }
+
+  function drawField(c, v, t, spb, pulse) {
+    c.fillStyle = 'rgba(11,13,30,0.9)';
+    c.fillRect(v.fieldX, 0, v.fieldW, v.h);
+    // bottom glow that breathes with the beat
+    const gr = c.createLinearGradient(0, v.hitY - 160, 0, v.hitY + 40);
+    gr.addColorStop(0, 'rgba(95,225,255,0)');
+    gr.addColorStop(1, rgba(C.tap, 0.05 + pulse * 0.07));
+    c.fillStyle = gr;
+    c.fillRect(v.fieldX, v.hitY - 160, v.fieldW, 200);
+    // beat lines
+    if (spb) {
+      const top = v.now + v.approach + 0.1, bot = v.now - (v.h - v.hitY) / v.pps;
+      for (let b = Math.ceil(bot / spb); b * spb <= top; b++) {
+        const y = Y(v, b * spb);
+        c.fillStyle = b % 4 === 0 ? 'rgba(165,171,207,0.14)' : 'rgba(165,171,207,0.05)';
+        c.fillRect(v.fieldX, Math.round(y), v.fieldW, 1);
+      }
+    }
+    // dividers and edges
+    for (let k = 0; k <= 5; k++) {
+      const x = Math.round(v.fieldX + k * v.laneW);
+      c.fillStyle = k === 0 || k === 5 ? 'rgba(95,225,255,0.22)' : 'rgba(165,171,207,0.07)';
+      c.fillRect(x - (k === 0 || k === 5 ? 1 : 0), 0, k === 0 || k === 5 ? 2 : 1, v.h);
+    }
+    // hit line and lane marks
+    c.fillStyle = `rgba(236,238,255,${0.22 + pulse * 0.25})`;
+    c.fillRect(v.fieldX, v.hitY - 1, v.fieldW, 2);
+    c.fillStyle = 'rgba(236,238,255,0.18)';
+    for (let k = 0; k < 5; k++) c.fillRect(Math.round(X(v, k)) - 1, v.hitY + 12, 2, 8);
+  }
+
+  // Crack lines for a glass piece, the same every frame for the same piece.
+  function cracks(c, x0, y0, w, h, seed, n) {
+    let r = seed * 9301 + 49297;
+    const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+    c.beginPath();
+    for (let i = 0; i < n; i++) {
+      let x = x0 + rnd() * w, y = y0 + rnd() * h;
+      c.moveTo(x, y);
+      for (let k = 0; k < 3; k++) { x += (rnd() - 0.5) * w * 0.5; y += (rnd() - 0.5) * Math.min(h, 60) * 0.6; c.lineTo(clamp(x, x0, x0 + w), clamp(y, y0, y0 + h)); }
+    }
+    c.stroke();
+  }
+
+  function drawObstacle(c, v, o) {
+    if (o.kind === 'beam') return drawBeam(c, v, o);
+    if (o.path) return drawSweeper(c, v, o);
+    const yTop = Math.max(-20, Y(v, o.t2)), yBot = Math.min(v.h + 20, Y(v, o.t));
+    if (yBot <= yTop) return;
+    c.save();
+    if (o.kind === 'block' || o.kind === 'glass') {
+      const x0 = X(v, o.x0 - 0.45), x1 = X(v, o.x1 + 0.45), w = x1 - x0, h = yBot - yTop;
+      if (o.kind === 'glass') {
+        const gr = c.createLinearGradient(x0, 0, x1, 0);
+        gr.addColorStop(0, rgba(C.tap, o.hard ? 0.42 : 0.22));
+        gr.addColorStop(0.5, rgba(C.tap, o.hard ? 0.28 : 0.1));
+        gr.addColorStop(1, rgba(C.tap, o.hard ? 0.42 : 0.22));
+        c.fillStyle = gr;
+        c.fillRect(x0, yTop, w, h);
+        c.strokeStyle = rgba('#ffffff', o.hard ? 0.5 : 0.35);
+        c.lineWidth = 1;
+        cracks(c, x0, yTop, w, h, o.id + 1, Math.min(8, 2 + Math.round(h / 40)));
+        c.shadowColor = C.tap; c.shadowBlur = 12;
+        c.strokeStyle = o.hard ? '#ffffff' : C.tap;
+        c.lineWidth = o.hard ? 3 : 2;
+        c.strokeRect(x0 + 1, yTop + 1, w - 2, h - 2);
+        if (o.hard) { c.shadowBlur = 0; c.lineWidth = 1.5; c.strokeStyle = C.tap; c.strokeRect(x0 + 5, yTop + 5, w - 10, Math.max(0, h - 10)); }
+      } else {
+        c.fillStyle = o.phase ? rgba(C.hazard, 0.13) : rgba(C.hazard, 0.82);
+        c.fillRect(x0, yTop, w, h);
+        const pat = patternFor(c, o.phase);
+        try { pat.setTransform(new DOMMatrix().translate(0, Math.round(Y(v, o.t)))); } catch (e) { /* static stripes */ }
+        c.fillStyle = pat;
+        c.fillRect(x0, yTop, w, h);
+        c.lineWidth = 2;
+        if (o.phase) { c.setLineDash([7, 5]); c.strokeStyle = C.zip; }
+        else { c.strokeStyle = '#ff9db5'; c.shadowColor = C.hazard; c.shadowBlur = 12; }
+        c.strokeRect(x0 + 1, yTop + 1, w - 2, h - 2);
+      }
+    } else {
+      const x = X(v, o.x0), w = Math.max(4, v.laneW * 0.09);
+      if (o.phase) {
+        c.fillStyle = rgba(C.hazard, 0.35);
+        c.fillRect(x - w / 2, yTop, w, yBot - yTop);
+        c.setLineDash([8, 6]); c.lineWidth = 2; c.strokeStyle = C.zip;
+        c.beginPath(); c.moveTo(x, yTop); c.lineTo(x, yBot); c.stroke();
+      } else {
+        c.shadowColor = C.hazard; c.shadowBlur = 14;
+        c.fillStyle = C.hazard; c.fillRect(x - w / 2, yTop, w, yBot - yTop);
+        c.shadowBlur = 0;
+        c.fillStyle = '#ffd0db'; c.fillRect(x - 1, yTop, 2, yBot - yTop);
+      }
+    }
+    c.restore();
+  }
+
+  // Beams don't fall: the lanes flash for the count-in, then a full-height laser fires on the beat.
+  function drawBeam(c, v, o) {
+    const now = v.now, x0 = X(v, o.x0 - 0.45), x1 = X(v, o.x1 + 0.45), w = x1 - x0;
+    if (now < o.t - o.warn || now > o.t2 + 0.08) return;
+    c.save();
+    if (now < o.t) {
+      const k = (now - (o.t - o.warn)) / o.warn;
+      const blink = now >= o.t - o.warn / 2 ? 1 : 0.6;
+      c.fillStyle = rgba(C.hazard, (0.06 + 0.1 * k) * blink);
+      c.fillRect(x0, 0, w, v.hitY);
+      c.setLineDash([6, 8]); c.lineWidth = 1.5; c.strokeStyle = rgba(C.hazard, 0.7);
+      c.strokeRect(x0 + 1, 0, w - 2, v.hitY);
+      c.setLineDash([]);
+      // the fuse: burns down to the line as the count runs out
+      c.fillStyle = C.hazard;
+      const fuse = (1 - k) * (w - 8);
+      c.fillRect(x0 + 4 + (w - 8 - fuse) / 2, v.hitY - 6, fuse, 4);
+    } else {
+      const fade = now > o.t2 ? 1 - (now - o.t2) / 0.08 : 1;
+      c.globalAlpha = Math.max(0, fade);
+      c.shadowColor = C.hazard; c.shadowBlur = 24;
+      c.fillStyle = rgba(C.hazard, 0.75);
+      c.fillRect(x0 + 2, 0, w - 4, v.h);
+      c.shadowBlur = 0;
+      c.fillStyle = 'rgba(255,240,245,0.85)';
+      c.fillRect(x0 + w * 0.3, 0, w * 0.4, v.h);
+    }
+    c.restore();
+  }
+
+  // A sweeper slides along the line, so in the falling field it's a dashed diagonal.
+  function drawSweeper(c, v, o) {
+    const top = v.now + v.approach + 0.12, bot = v.now - (v.h - v.hitY) / v.pps;
+    const from = Math.max(o.t, bot), to = Math.min(o.t2, top);
+    if (to <= from) return;
+    c.save();
+    c.beginPath();
+    const step = Math.max(0.004, 6 / v.pps);
+    for (let t = from; t <= to + 1e-9; t += step) {
+      const x = X(v, pathX(o.path, Math.min(t, to))), y = Y(v, Math.min(t, to));
+      if (t === from) c.moveTo(x, y); else c.lineTo(x, y);
+    }
+    c.lineCap = 'round';
+    c.strokeStyle = rgba(C.hazard, 0.45); c.lineWidth = Math.max(5, v.laneW * 0.1); c.stroke();
+    c.setLineDash([8, 6]); c.strokeStyle = C.zip; c.lineWidth = 2; c.stroke();
+    c.restore();
+    if (v.now >= o.t && v.now <= o.t2) {
+      const x = X(v, pathX(o.path, v.now));
+      c.save();
+      c.shadowColor = C.hazard; c.shadowBlur = 16;
+      c.fillStyle = C.hazard; c.fillRect(x - 3, v.hitY - 26, 6, 40);
+      c.restore();
+    }
+  }
+
+  // Draws a chart's hazards for a view. Shared by the game and the menu previews.
+  function drawChart(c, v, obstacles) {
+    const top = v.now + v.approach + 0.12, bot = v.now - (v.h - v.hitY) / v.pps - 0.1;
+    for (const o of obstacles) {
+      if (o.t - (o.warn || 0) > top) break;
+      if (o.kind === 'beam') continue;
+      if (o.t2 >= bot) drawObstacle(c, v, o);
+    }
+    for (const o of obstacles) {
+      if (o.t > v.now + 4) break; // no count-in is longer than this
+      if (o.kind === 'beam') drawBeam(c, v, o);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Effects
+  const particles = [];
+  function burst(x, y, col, n, speed, life) {
+    if (reduceMotion) n = Math.ceil(n / 3);
+    for (let i = 0; i < n && particles.length < 700; i++) {
+      const a = Math.random() * Math.PI * 2, s = speed * (0.35 + Math.random() * 0.75);
+      particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - speed * 0.35, life, max: life, col, r: 1.2 + Math.random() * 2 });
+    }
+  }
+  const fx = { judge: null, shake: 0, flash: 0, flashCol: C.hazard, streaks: [], ghosts: [], lanes: [], pops: [] };
+  const trail = [];
+
+  function addJudge(text, col, sub) { fx.judge = { text, col, sub, at: performance.now() }; }
+
+  // ---------------------------------------------------------------------------------------------
+  // Game flow
+  let screen = 'menu';
+  let game = null, levelIndex = 0, song = null, songIdx = 0, runAudio = null, finishAt = 0, runFrom = 0;
+  const heldKeys = { snap: new Set(), soul: new Set(), dirs: new Set() };
+
+  function show(id) {
+    for (const s of ['menu', 'pause', 'failed', 'results']) $(s).hidden = s !== id;
+  }
+
+  async function start(i, opts) {
+    levelIndex = i;
+    const level = LEVELS[i];
+    const ctx = Synth.init();
+    try { await ctx.resume(); } catch (e) { /* resume is best effort */ }
+    if (opts && opts.noFail != null) { settings.noFail = opts.noFail; $('set-nofail').checked = opts.noFail; saveSettings(); }
+    runFrom = (opts && opts.from) || 0;
+    game = new Game(level, { noFail: settings.noFail, from: runFrom });
+    song = buildSong(level);
+    songIdx = 0;
+    runAudio = Synth.newRun();
+    const lead = -game.t;
+    Clock.begin(ctx.currentTime + 0.12 + lead / settings.rate, settings.rate);
+    Clock.sync(performance.now());
+    particles.length = 0;
+    fx.judge = null; fx.shake = 0; fx.flash = 0; fx.streaks.length = 0; fx.ghosts.length = 0; fx.pops.length = 0; trail.length = 0;
+    heldKeys.snap.clear(); heldKeys.soul.clear(); heldKeys.dirs.clear();
+    finishAt = 0;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    screen = 'play';
+    show(null);
+  }
+
+  function pause() {
+    if (screen !== 'play') return;
+    releaseAll();
+    screen = 'paused';
+    if (Synth.ctx) Synth.ctx.suspend();
+    $('pause-level').textContent = `${LEVELS[levelIndex].name} · ${Math.round(game.progress() * 100)}%`;
+    const here = sectionAt(game.t);
+    const list = [{ t: 0, title: 'START' }].concat(game.sections().filter((x) => x.t > 0.5));
+    const box = $('pause-sections');
+    box.innerHTML = '';
+    for (const sec of list) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = sec.title;
+      if (here ? here.t === sec.t : sec.t === 0) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', () => restart({ from: sec.t }));
+      box.appendChild(b);
+    }
+    show('pause');
+    $('btn-resume').focus();
+  }
+  async function resume() {
+    if (screen !== 'paused') return;
+    show(null);
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    try { await Synth.ctx.resume(); } catch (e) { /* best effort */ }
+    Clock.anchored = false;
+    Clock.sync(performance.now());
+    screen = 'play';
+  }
+  function toMenu() {
+    if (Synth.run) Synth.endRun(false);
+    if (Synth.ctx && Synth.ctx.state === 'suspended') Synth.ctx.resume();
+    screen = 'menu';
+    game = null;
+    renderCards();
+    show('menu');
+  }
+  function restart(opts) {
+    if (Synth.run) Synth.endRun(false);
+    start(levelIndex, Object.assign({ from: runFrom }, opts));
+  }
+  function sectionAt(t) {
+    let cur = null;
+    for (const s of game.sections()) if (s.t <= t && s.t > 0.5) cur = s;
+    return cur;
+  }
+
+  function releaseAll() {
+    if (!game) return;
+    const t = game.t;
+    for (const d of [-1, 1]) game.input({ t, kind: 'dir', dir: d, down: false });
+    if (heldKeys.snap.size) game.input({ t, kind: 'snap', down: false });
+    if (heldKeys.soul.size) game.input({ t, kind: 'soul', down: false });
+    heldKeys.snap.clear(); heldKeys.soul.clear(); heldKeys.dirs.clear();
+  }
+
+  let failSection = null;
+  function die(ev) {
+    screen = 'dead';
+    releaseAll();
+    fx.shake = reduceMotion ? 4 : 16; fx.flash = 1; fx.flashCol = C.hazard;
+    burst(X(view, ev.x), view.hitY, C.hazard, 70, 520, 1.1);
+    burst(X(view, ev.x), view.hitY, '#ffffff', 20, 300, 0.6);
+    Synth.crash(Synth.ctx.currentTime);
+    Synth.endRun(true);
+    const pct = Math.round(game.progress() * 100);
+    setTimeout(() => {
+      if (screen !== 'dead') return;
+      const lv = LEVELS[levelIndex];
+      $('fail-level').textContent = `${lv.name} · ${lv.difficulty}`;
+      $('fail-why').textContent = `Out of hearts ${pct}% of the way through, at beat ${Math.round(ev.t / game.spb)}. The last hit was ${hazardName(ev.o)}.`;
+      $('fail-bar').style.width = pct + '%';
+      $('btn-nofail-f').hidden = settings.noFail;
+      failSection = sectionAt(ev.t);
+      $('btn-section-f').hidden = !failSection;
+      if (failSection) $('fail-section').textContent = failSection.title;
+      screen = 'failed';
+      show('failed');
+      $('btn-retry-f').focus();
+    }, 950);
+  }
+
+  function hazardName(o) {
+    if (o.path) return 'a sweeper';
+    if (o.kind === 'beam') return 'a beam';
+    if (o.kind === 'glass') return o.hard ? 'hardglass' : 'glass';
+    if (o.kind === 'wall') return o.phase ? 'a dashed wall' : 'a wall';
+    return o.phase ? 'a dashed block' : 'a block';
+  }
+
+  function finish() {
+    screen = 'results';
+    Synth.endRun(false);
+    const lv = LEVELS[levelIndex], S = game.stats;
+    const gr = gradeOf(S, true), score = S.score;
+    const practice = settings.noFail || settings.rate < 1 || runFrom > 0;
+    const prev = best[lv.id];
+    const isBest = !practice && (!prev || score > prev.score);
+    if (isBest) { best[lv.id] = { score, grade: gr, hits: S.hits }; store.set('tether-dodge.best.v1', best); }
+    $('r-level').textContent = `${lv.name} · ${lv.difficulty}`;
+    $('r-grade').textContent = gr;
+    $('r-grade').dataset.g = gr;
+    $('r-grade').hidden = practice;
+    $('r-score').textContent = score.toLocaleString('en-US');
+    const badges = [];
+    if (S.hits === 0) badges.push('<span class="badge fc">FLAWLESS</span>');
+    if (isBest) badges.push('<span class="badge best">NEW BEST</span>');
+    if (practice) {
+      const from = runFrom > 0 ? (game.sections().find((x) => x.t === runFrom) || {}).title : '';
+      badges.push(`<span class="badge practice">PRACTICE${from ? ` · FROM ${from}` : ''}${settings.noFail ? ' · UNLIMITED HEARTS' : ''}${settings.rate < 1 ? ` · ${Math.round(settings.rate * 100)}%` : ''}</span>`);
+    }
+    $('r-badges').innerHTML = badges.join('');
+    $('r-hits').textContent = S.hits;
+    $('r-streak').textContent = `${S.longest} beats`;
+    $('r-frozen').textContent = `${S.frozen.toFixed(1)} s`;
+    const rows = [
+      ['Close calls', S.close, 'Out of a lane under 90 ms before it was hit'],
+      ['Razors', S.razor, 'Under 40 ms'],
+      ['Threads', S.thread, 'Through a gap or over a sweeper, right at the edge'],
+      ['Hops', S.hop, 'Snapped over a dashed block'],
+      ['Shatters', S.shatter, 'Glass your soul broke'],
+      ['Ricochets', S.ricochet, 'Extra pieces broken in one throw'],
+    ];
+    $('r-rows').innerHTML = rows.map(([label, n, what]) => `<tr><td>${label}</td><td>${n}</td><td class="what">${what}</td></tr>`).join('');
+    $('btn-next-r').hidden = levelIndex >= LEVELS.length - 1;
+    show('results');
+    $('btn-retry-r').focus();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Audio during play
+  function scheduleMusic() {
+    if (!runAudio || !song) return;
+    const ctx = Synth.ctx, horizon = ctx.currentTime + 0.22, rate = Clock.rate;
+    while (songIdx < song.length) {
+      const e = song[songIdx];
+      const at = Clock.ctxTime(e.t);
+      if (at > horizon) break;
+      songIdx++;
+      if (at < ctx.currentTime - 0.02 || e.t < runFrom - 0.05) continue;
+      const a = e.args.slice();
+      if (e.fn === 'pad' || e.fn === 'bass') a[1] /= rate; // durations are in song seconds
+      Synth[e.fn](runAudio.bus, Math.max(at, ctx.currentTime), ...a);
+    }
+  }
+  setInterval(() => { if (screen === 'play') scheduleMusic(); }, 25);
+
+  const LABEL = { close: 'CLOSE', razor: 'RAZOR', thread: 'THREAD', hop: 'HOP', shatter: 'SHATTER', hardShatter: 'SHATTER', ricochet: 'RICOCHET' };
+  function handle(ev) {
+    const lv = LEVELS[levelIndex], v = view, ctx = Synth.ctx;
+    switch (ev.type) {
+      case 'bonus': {
+        const col = ev.kind === 'razor' ? '#ffffff' : ev.kind === 'thread' || ev.kind === 'hop' ? C.zip : ev.kind.endsWith('hatter') || ev.kind === 'ricochet' ? C.tap : C.gem;
+        fx.pops.push({ text: `${LABEL[ev.kind]} +${ev.pts}`, col, x: ev.x, at: performance.now(), row: fx.pops.length % 3 });
+        burst(X(v, ev.x), v.hitY - 4, col, ev.kind === 'razor' ? 14 : 8, 200, 0.4);
+        if (runAudio) Synth.pluck(runAudio.bus, ctx.currentTime + 0.003, leadMidi(lv, { beat: Math.max(0, game.t / game.spb), x: ev.x }), ev.kind === 'razor' ? 1 : 0.75);
+        break;
+      }
+      case 'shatter': {
+        const o = ev.o, x0 = X(v, o.x0 - 0.45), x1 = X(v, o.x1 + 0.45);
+        for (let i = 0; i < 26; i++) burst(x0 + Math.random() * (x1 - x0), v.hitY - Math.random() * 30, i % 3 ? C.tap : '#ffffff', 1, 360, 0.7);
+        fx.lanes.push({ x: (o.x0 + o.x1) / 2, col: C.tap, at: performance.now() });
+        if (runAudio) Synth.shatter(runAudio.bus, ctx.currentTime, ev.x, o.hard);
+        break;
+      }
+      case 'tink':
+        if (runAudio) Synth.tink(runAudio.bus, ctx.currentTime, ev.x);
+        burst(X(v, ev.x), v.hitY - 3, '#ffffff', 3, 120, 0.25);
+        break;
+      case 'hit':
+        fx.shake = reduceMotion ? 3 : 10; fx.flash = 0.7; fx.flashCol = C.hazard;
+        burst(X(v, ev.x), v.hitY, C.hazard, 30, 340, 0.7);
+        Synth.crash(ctx.currentTime, true);
+        if (runAudio) { const f = runAudio.filter.frequency; f.cancelScheduledValues(ctx.currentTime); f.setValueAtTime(600, ctx.currentTime); f.exponentialRampToValueAtTime(20000, ctx.currentTime + 0.9); }
+        if (ev.hearts > 0) addJudge(settings.noFail ? 'HIT' : `HIT · ${ev.hearts} LEFT`, C.hazard);
+        break;
+      case 'heal':
+        addJudge('HEART BACK', C.soul);
+        if (runAudio) Synth.bell(runAudio.bus, ctx.currentTime, 81, 0.8);
+        break;
+      case 'flow':
+        addJudge(`FLOW ×${ev.flow}`, C.zip);
+        if (runAudio) [0, 4, 7].forEach((d, i) => Synth.arp(runAudio.bus, ctx.currentTime + i * 0.05, 76 + d, 2));
+        break;
+      case 'snap':
+        fx.streaks.push({ from: ev.from, to: ev.to, at: performance.now() });
+        fx.ghosts.push({ x: ev.from, at: performance.now() });
+        burst(X(v, ev.to), v.hitY, C.zip, 8, 180, 0.35);
+        Synth.whoosh(ctx.currentTime);
+        break;
+      case 'twang':
+        Synth.twang(ctx.currentTime, ev.stretch);
+        break;
+      case 'blocked':
+        Synth.clank(ctx.currentTime);
+        burst(X(v, ev.x + ev.dir * 0.3), v.hitY, C.hazard, 6, 140, 0.25);
+        break;
+      case 'death':
+        die(ev);
+        break;
+      case 'end':
+        finishAt = performance.now() + 500;
+        break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Frame
+  let lastFrame = performance.now();
+  function frame(now) {
+    now = performance.now();
+    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (screen === 'play') {
+      Clock.sync(now);
+      game.advance(Math.max(game.t, Clock.at(now)));
+      for (const ev of game.drain()) handle(ev);
+      if (game.state === 'done' && finishAt && now > finishAt) finish();
+    }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; p.vx *= 0.97;
+    }
+    fx.shake *= Math.pow(0.02, dt);
+    fx.flash = Math.max(0, fx.flash - dt * 2.2);
+    if (game && screen !== 'menu') drawGame(now); else drawAmbient(now);
+    requestAnimationFrame(frame);
+  }
+
+  function drawGame(now) {
+    const v = view, lv = LEVELS[levelIndex], spb = game.spb;
+    v.now = game.t;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    g.fillStyle = C.void;
+    g.fillRect(0, 0, W, H);
+    g.save();
+    if (fx.shake > 0.3) g.translate((Math.random() - 0.5) * fx.shake, (Math.random() - 0.5) * fx.shake);
+    const beatPhase = game.t >= 0 ? (game.t / spb) % 1 : 1;
+    const pulse = Math.exp(-beatPhase * 6);
+    drawField(g, v, game.t, spb, pulse);
+
+    // lane flashes on shatters
+    for (let i = fx.lanes.length - 1; i >= 0; i--) {
+      const f = fx.lanes[i], age = (now - f.at) / 260;
+      if (age >= 1) { fx.lanes.splice(i, 1); continue; }
+      const x = X(v, f.x), w = v.laneW * 0.7;
+      const gr = g.createLinearGradient(0, v.hitY - 140, 0, v.hitY);
+      gr.addColorStop(0, rgba(f.col, 0)); gr.addColorStop(1, rgba(f.col, 0.28 * (1 - age)));
+      g.fillStyle = gr; g.fillRect(x - w / 2, v.hitY - 140, w, 140);
+    }
+
+    drawChart(g, v, game.obstacles);
+
+    // snap streaks and afterimages
+    for (let i = fx.streaks.length - 1; i >= 0; i--) {
+      const s = fx.streaks[i], age = (now - s.at) / 200;
+      if (age >= 1) { fx.streaks.splice(i, 1); continue; }
+      const x0 = X(v, s.from), x1 = X(v, s.to);
+      g.fillStyle = rgba(C.zip, 0.65 * (1 - age));
+      g.fillRect(Math.min(x0, x1), v.hitY - 2, Math.abs(x1 - x0), 4);
+    }
+    for (let i = fx.ghosts.length - 1; i >= 0; i--) {
+      const s = fx.ghosts[i], age = (now - s.at) / 220;
+      if (age >= 1) { fx.ghosts.splice(i, 1); continue; }
+      stamp(g, sprites.ghost, X(v, s.x), v.hitY, 0.5 * (1 - age));
+    }
+
+    // paddle, trail, soul and tether
+    const p = game.paddle, s = game.soul, held = game.held;
+    trail.push({ x: p.x, at: now });
+    while (trail.length && now - trail[0].at > 90) trail.shift();
+    let px = X(v, p.x);
+    const bonk = (game.t - p.bonkT) / 0.15;
+    if (bonk >= 0 && bonk < 1) px += Math.sin(bonk * Math.PI * 5) * 4 * (1 - bonk) * p.bonkDir;
+    for (const tr of trail) {
+      const a = 1 - (now - tr.at) / 90;
+      if (Math.abs(tr.x - p.x) > 0.02) stamp(g, sprites.paddle, X(v, tr.x), v.hitY, 0.18 * a);
+    }
+    const dying = screen === 'dead' || screen === 'failed';
+    const invuln = game.t < game.invulnUntil && Math.floor(now / 70) % 2;
+    if (!dying && !invuln) stamp(g, held.soul ? sprites.paddleDim : held.snap ? sprites.paddleSnap : sprites.paddle, px, v.hitY);
+    if (s.out && !dying) {
+      const sx = X(v, s.x);
+      drawTether(g, px, sx, v.hitY, s.x - p.x, s.v);
+      drawSoul(g, sx, v.hitY - 3, s.v);
+      if (Math.random() < 0.5) particles.push({ x: sx + (Math.random() - 0.5) * 10, y: v.hitY - 6, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 40, life: 0.5, max: 0.5, col: C.soul, r: 1.4 });
+    }
+
+    // particles
+    g.globalCompositeOperation = 'lighter';
+    for (const q of particles) {
+      g.globalAlpha = Math.max(0, q.life / q.max);
+      g.fillStyle = q.col;
+      g.fillRect(q.x - q.r, q.y - q.r, q.r * 2, q.r * 2);
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
+
+    drawHud(now, lv);
+    if (fx.flash > 0) { g.fillStyle = rgba(fx.flashCol, fx.flash * 0.35); g.fillRect(0, 0, W, H); }
+  }
+
+  function text(str, x, y, font, col, align, spacing) {
+    g.font = font; g.fillStyle = col; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic';
+    if ('letterSpacing' in g) g.letterSpacing = spacing || '0px';
+    g.fillText(str, x, y);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+  }
+
+  function heart(x, y, r, full) {
+    g.beginPath();
+    g.moveTo(x, y + r * 0.9);
+    g.bezierCurveTo(x - r * 1.4, y - r * 0.1, x - r * 0.7, y - r * 1.2, x, y - r * 0.4);
+    g.bezierCurveTo(x + r * 0.7, y - r * 1.2, x + r * 1.4, y - r * 0.1, x, y + r * 0.9);
+    g.closePath();
+    if (full) { g.fillStyle = C.hazard; g.fill(); } else { g.lineWidth = 1.5; g.strokeStyle = rgba(C.hazard, 0.5); g.stroke(); }
+  }
+
+  function drawHud(now, lv) {
+    const v = view, S = game.stats;
+    const wide = W - v.fieldW > 420;
+    // progress
+    g.fillStyle = 'rgba(165,171,207,0.12)';
+    g.fillRect(v.fieldX, 0, v.fieldW, 3);
+    g.fillStyle = C.ink;
+    g.fillRect(v.fieldX, 0, v.fieldW * game.progress(), 3);
+    // level, hearts, score and flow
+    const lx = wide ? v.fieldX - 24 : v.fieldX + 12, rx = wide ? v.fieldX + v.fieldW + 24 : v.fieldX + v.fieldW - 12;
+    const la = wide ? 'right' : 'left', ra = wide ? 'left' : 'right';
+    text(lv.name.toUpperCase(), lx, 30, `700 12px ${FONT_D}`, C.ink, la, '0.14em');
+    text(lv.difficulty.toUpperCase() + (settings.rate < 1 ? ` · ${Math.round(settings.rate * 100)}%` : ''), lx, 48, `600 11px ${FONT_U}`, C['ink-3'], la, '0.12em');
+    if (settings.noFail) text(`∞ HEARTS · ${S.hits} HIT${S.hits === 1 ? '' : 'S'}`, lx, 70, `700 11px ${FONT_D}`, C.hazard, la, '0.1em');
+    else for (let i = 0; i < K.HEARTS; i++) heart(wide ? lx - 10 - (K.HEARTS - 1 - i) * 22 : lx + 9 + i * 22, 66, 7, i < game.hearts);
+    text(S.score.toLocaleString('en-US'), rx, 34, `700 ${wide ? 24 : 18}px ${FONT_M}`, C.ink, ra);
+    text(`×${S.flow}`, rx, wide ? 60 : 54, `800 15px ${FONT_D}`, S.flow > 1 ? C.zip : C['ink-3'], ra, '0.06em');
+    const meter = S.flow >= K.FLOW_MAX ? 1 : (S.cleanBeats % K.FLOW_BEATS) / K.FLOW_BEATS;
+    const mw = 56, mx = wide ? rx : rx - mw;
+    g.fillStyle = 'rgba(165,171,207,0.15)'; g.fillRect(mx, wide ? 66 : 60, mw, 3);
+    g.fillStyle = C.zip; g.fillRect(mx, wide ? 66 : 60, mw * meter, 3);
+
+    // floating bonus labels
+    for (let i = fx.pops.length - 1; i >= 0; i--) {
+      const p = fx.pops[i], age = (now - p.at) / 750;
+      if (age >= 1) { fx.pops.splice(i, 1); continue; }
+      g.globalAlpha = 1 - age * age;
+      text(p.text, clamp(X(v, p.x), v.fieldX + 50, v.fieldX + v.fieldW - 50), v.hitY - 30 - p.row * 16 - age * 30, `800 12px ${FONT_D}`, p.col, 'center', '0.1em');
+      g.globalAlpha = 1;
+    }
+    // big messages: hits, hearts back, flow
+    if (fx.judge) {
+      const age = (now - fx.judge.at) / 900;
+      if (age < 1) {
+        g.globalAlpha = 1 - age * age;
+        const sz = Math.round(18 + 6 * Math.max(0, 1 - age * 5));
+        text(fx.judge.text, v.fieldX + v.fieldW / 2, H * 0.47, `800 ${sz}px ${FONT_D}`, fx.judge.col, 'center', '0.12em');
+        g.globalAlpha = 1;
+      }
+    }
+    // callouts
+    for (const c of game.texts) {
+      if (game.t < c.t || game.t > c.t2) continue;
+      const a = Math.min(1, (game.t - c.t) / 0.25, (c.t2 - game.t) / 0.35);
+      g.globalAlpha = a;
+      const cy = Math.round(H * 0.22);
+      const lines = c.line ? wrap(c.line, v.fieldW - 40, `500 15px ${FONT_U}`) : [];
+      const boxH = 58 + lines.length * 20;
+      g.fillStyle = 'rgba(6,7,15,0.6)';
+      g.fillRect(v.fieldX, cy - 40, v.fieldW, boxH);
+      g.fillStyle = rgba(C.soul, 0.5);
+      g.fillRect(v.fieldX, cy - 40, v.fieldW, 1);
+      g.fillRect(v.fieldX, cy - 40 + boxH, v.fieldW, 1);
+      text(c.title, v.fieldX + v.fieldW / 2, cy, `800 ${Math.round(clamp(v.laneW * 0.26, 18, 28))}px ${FONT_D}`, C.ink, 'center', '0.08em');
+      lines.forEach((ln, i) => text(ln, v.fieldX + v.fieldW / 2, cy + 26 + i * 20, `500 15px ${FONT_U}`, C['ink-2'], 'center'));
+      g.globalAlpha = 1;
+    }
+    // modifier keys
+    const y = Math.min(H - 14, v.hitY + 50), cx = v.fieldX + v.fieldW / 2;
+    chip('SHIFT · SNAP', cx - 8, y, 'right', game.held.snap, C.zip);
+    chip('CTRL/SPACE · SOUL', cx + 8, y, 'left', game.held.soul, C.soul);
+  }
+  function chip(label, x, y, align, on, col) {
+    g.font = `700 10px ${FONT_D}`;
+    if ('letterSpacing' in g) g.letterSpacing = '0.14em';
+    const w = g.measureText(label).width + 18;
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    const x0 = align === 'right' ? x - w : x;
+    rr(g, x0, y - 15, w, 22, 4);
+    g.fillStyle = on ? rgba(col, 0.22) : 'rgba(165,171,207,0.06)'; g.fill();
+    g.lineWidth = 1; g.strokeStyle = on ? col : 'rgba(165,171,207,0.18)'; g.stroke();
+    text(label, x0 + w / 2, y, `700 10px ${FONT_D}`, on ? col : C['ink-3'], 'center', '0.14em');
+  }
+  function wrap(str, maxW, font) {
+    g.font = font;
+    const words = str.split(' '), lines = [];
+    let cur = '';
+    for (const w of words) {
+      const next = cur ? cur + ' ' + w : w;
+      if (g.measureText(next).width > maxW && cur) { lines.push(cur); cur = w; } else cur = next;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // Title screen backdrop: the field idles to 100 BPM and the soul swings out and back.
+  function drawAmbient(now) {
+    const v = view, t = now / 1000, spb = 0.6;
+    v.now = t;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    g.fillStyle = C.void;
+    g.fillRect(0, 0, W, H);
+    drawField(g, v, t, spb, Math.exp(-((t / spb) % 1) * 6));
+    // Every 2.4 s pull toward alternating sides for 0.45 s, then let go.
+    const cycle = t % 2.4, pull = cycle < 0.45 ? (Math.floor(t / 2.4) % 2 ? -1 : 1) : 0;
+    const dt = Math.min(0.05, t - (ambient.t || t));
+    ambient.t = t;
+    for (let left = dt; left > 1e-6; left -= K.STEP) soulStep(ambient.soul, pull, 2, Math.min(K.STEP, left));
+    const px = X(v, 2), sx = X(v, ambient.soul.x);
+    stamp(g, sprites.paddle, px, v.hitY);
+    if (Math.abs(ambient.soul.x - 2) > 0.01 || pull) {
+      drawTether(g, px, sx, v.hitY, ambient.soul.x - 2, ambient.soul.v);
+      drawSoul(g, sx, v.hitY - 3, ambient.soul.v);
+    }
+  }
+  const ambient = { t: 0, soul: { x: 2, v: 0, pull: 0 } };
+
+  // The tether is a rubber band: it thins as it stretches and bows as the soul swings.
+  function drawTether(c, px, sx, y, stretch, vel) {
+    const dx = sx - px, n = 14;
+    const mid = Math.max(1.4, 6 - 1.25 * Math.abs(stretch));
+    // Taut while it stretches out, slack while it snaps back, the same on either side.
+    const bow = -8 - Math.abs(dx) * 0.06 + clamp(vel * Math.sign(dx || 1) * 0.5, -12, 12);
+    const top = [], bot = [];
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, k = Math.sin(Math.PI * u);
+      const x = px + dx * u, yc = y - 3 * u + bow * k;
+      const h = (6 + (mid - 6) * k) / 2;
+      top.push([x, yc - h]); bot.push([x, yc + h]);
+    }
+    c.save();
+    c.beginPath();
+    top.forEach(([x, yy], i) => (i ? c.lineTo(x, yy) : c.moveTo(x, yy)));
+    for (let i = bot.length - 1; i >= 0; i--) c.lineTo(bot[i][0], bot[i][1]);
+    c.closePath();
+    c.fillStyle = rgba(C.soul, 0.28 + Math.min(0.5, Math.abs(stretch) * 0.14));
+    c.shadowColor = C.soul; c.shadowBlur = 10;
+    c.fill();
+    c.restore();
+  }
+  // The soul squashes along its direction of travel.
+  function drawSoul(c, x, y, vel) {
+    const sp = sprites.soulBody, k = 1 + Math.min(0.7, Math.abs(vel) * 0.03);
+    c.drawImage(sp.cv, x - (sp.w * k) / 2, y - sp.h / (2 * k), sp.w * k, sp.h / k);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Input
+  const DIRS = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1 };
+  const SNAP = new Set(['ShiftLeft', 'ShiftRight']);
+  const SOUL = new Set(['ControlLeft', 'ControlRight', 'Space']);
+
+  function songTimeOf(e) {
+    const now = performance.now();
+    const ts = e.timeStamp && Math.abs(e.timeStamp - now) < 1000 ? e.timeStamp : now;
+    return Clock.at(ts);
+  }
+  function setMod(kind, set, code, down, t) {
+    const was = set.size > 0;
+    if (down) set.add(code); else set.delete(code);
+    if (was !== set.size > 0) game.input({ t, kind, down: set.size > 0 });
+  }
+  // Recover from a modifier released while the window wasn't listening.
+  function syncMods(e, t) {
+    if (!e.shiftKey && heldKeys.snap.size) { heldKeys.snap.clear(); game.input({ t, kind: 'snap', down: false }); }
+    if (!e.ctrlKey && (heldKeys.soul.has('ControlLeft') || heldKeys.soul.has('ControlRight'))) {
+      heldKeys.soul.delete('ControlLeft'); heldKeys.soul.delete('ControlRight');
+      if (!heldKeys.soul.size) game.input({ t, kind: 'soul', down: false });
+    }
+  }
+
+  function onKey(e, down) {
+    const code = e.code;
+    const gameKey = code in DIRS || SNAP.has(code) || SOUL.has(code);
+    if (screen === 'play') {
+      if (gameKey || code === 'KeyR' || code === 'Escape' || code === 'ArrowUp' || code === 'ArrowDown') e.preventDefault();
+      if (e.repeat) return;
+      const t = songTimeOf(e);
+      if (SNAP.has(code)) setMod('snap', heldKeys.snap, code, down, t);
+      else if (SOUL.has(code)) setMod('soul', heldKeys.soul, code, down, t);
+      else if (code in DIRS) {
+        syncMods(e, t);
+        if (down) heldKeys.dirs.add(code); else heldKeys.dirs.delete(code);
+        game.input({ t, kind: 'dir', dir: DIRS[code], down });
+      } else if (down && code === 'Escape') pause();
+      else if (down && code === 'KeyR') restart();
+      return;
+    }
+    // A soul key still held after play ends mustn't press the focused dialog button.
+    if (SOUL.has(code)) e.preventDefault();
+    if (!down) return;
+    if (screen === 'dead' || screen === 'failed') {
+      if (code === 'KeyR' || (screen === 'failed' && code === 'Enter')) { e.preventDefault(); restart(); }
+      else if (code === 'KeyN' && !settings.noFail) { e.preventDefault(); restart({ noFail: true }); }
+      else if (code === 'KeyS' && failSection) { e.preventDefault(); restart({ from: failSection.t }); }
+      else if (code === 'Escape') toMenu();
+    } else if (screen === 'paused') {
+      if (code === 'Escape') { e.preventDefault(); resume(); }
+      else if (code === 'KeyR') restart();
+      else if (code === 'KeyQ') toMenu();
+    } else if (screen === 'results') {
+      if (code === 'KeyR') restart();
+      else if (code === 'KeyN' && levelIndex < LEVELS.length - 1) start(levelIndex + 1);
+      else if (code === 'Enter') { e.preventDefault(); restart(); }
+      else if (code === 'Escape') toMenu();
+    } else if (screen === 'menu') {
+      const i = ['Digit1', 'Digit2', 'Digit3'].indexOf(code);
+      if (i >= 0 && LEVELS[i] && !(e.target && e.target.matches && e.target.matches('input, select'))) start(i);
+    }
+  }
+  window.addEventListener('keydown', (e) => onKey(e, true));
+  window.addEventListener('keyup', (e) => onKey(e, false));
+  window.addEventListener('blur', pause);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  window.addEventListener('resize', resize);
+
+  $('btn-resume').addEventListener('click', resume);
+  $('btn-restart-p').addEventListener('click', () => restart());
+  $('btn-menu-p').addEventListener('click', toMenu);
+  $('btn-retry-f').addEventListener('click', () => restart());
+  $('btn-nofail-f').addEventListener('click', () => restart({ noFail: true }));
+  $('btn-section-f').addEventListener('click', () => { if (failSection) restart({ from: failSection.t }); });
+  $('btn-menu-f').addEventListener('click', toMenu);
+  $('btn-retry-r').addEventListener('click', () => restart());
+  $('btn-next-r').addEventListener('click', () => start(levelIndex + 1));
+  $('btn-menu-r').addEventListener('click', toMenu);
+
+  // ---------------------------------------------------------------------------------------------
+  // Menu
+  function fmtTime(s) { return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`; }
+  const PREVIEW = { 'first-light': [36, 46], 'phase-shift': [21, 30], soulbreak: [21, 29] };
+
+  function renderCards() {
+    const root = $('levels');
+    root.innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const c = compile(lv);
+      const b = best[lv.id];
+      const hazards = c.obstacles.filter((o) => o.kind !== 'wall' || o.path).length;
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.innerHTML = `
+        <canvas aria-hidden="true"></canvas>
+        <div class="card-body">
+          <div class="card-top"><span class="tier" data-tier="${lv.tier}">${lv.difficulty.toUpperCase()}</span><span class="pips">${'■'.repeat(lv.tier)}${'□'.repeat(3 - lv.tier)}</span></div>
+          <h2>${lv.name}</h2>
+          <p class="meta">${lv.bpm} BPM · ${fmtTime(c.end)} · ${hazards} hazards · ${lv.refill ? 'hearts refill' : 'no refills'}</p>
+          <p class="blurb">${lv.blurb}</p>
+          <p class="best">${b ? `Best <b>${b.grade}</b> · ${b.score.toLocaleString('en-US')} · ${b.hits} hit${b.hits === 1 ? '' : 's'}` : 'Not cleared yet'}</p>
+          <button class="play" type="button">PLAY <kbd>${i + 1}</kbd></button>
+        </div>`;
+      el.querySelector('.play').addEventListener('click', () => start(i));
+      root.appendChild(el);
+      requestAnimationFrame(() => drawPreview(el.querySelector('canvas'), lv, c, PREVIEW[lv.id] || [8, 14]));
+    });
+  }
+
+  // A still of each chart, drawn with the game's own renderer.
+  function drawPreview(cv, lv, c, [b0, b1]) {
+    const w = cv.clientWidth || 300, h = cv.clientHeight || 132;
+    cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+    const x = cv.getContext('2d');
+    x.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const spb = 60 / lv.bpm, fw = Math.min(w - 24, h * 1.9);
+    const v = { fieldX: (w - fw) / 2, fieldW: fw, laneW: fw / 5, hitY: h - 18, h, now: b0 * spb };
+    v.approach = (b1 - b0) * spb;
+    v.pps = (v.hitY + 10) / v.approach;
+    const sp = makeSprites(v.laneW);
+    drawField(x, v, v.now, spb, 0);
+    drawChart(x, v, c.obstacles.filter((o) => o.kind !== 'beam'));
+    stamp(x, sp.paddle, X(v, 2), v.hitY);
+  }
+
+  const LEGEND = [
+    ['block', 'Block', 'Lands on the beat. Be in another lane.'],
+    ['beam', 'Beam', 'The lane flashes, then fires on the count.'],
+    ['wall', 'Gate', "No crossing except through a gap. Short gaps need a snap."],
+    ['phaseWall', 'Dashed wall', 'A snap passes through it. Touching it hurts.'],
+    ['phaseBlock', 'Dashed block', 'Snap into it and you hop right over.'],
+    ['sweep', 'Sweeper', 'A dashed wall sliding along the line. Snap over it.'],
+    ['glass', 'Glass', 'Solid until your soul touches it. Ctrl alone guards your lane.'],
+    ['hardGlass', 'Hardglass', 'Only breaks when the soul springs back into it fast.'],
+  ];
+  function renderLegend() {
+    const ul = $('legend');
+    ul.innerHTML = LEGEND.map(([k, name, desc]) => `<li><canvas data-k="${k}" aria-hidden="true"></canvas><div><b>${name}</b><span>${desc}</span></div></li>`).join('');
+    ul.querySelectorAll('canvas').forEach((cv, i) => {
+      const w = 58, h = 40;
+      cv.width = w * DPR; cv.height = h * DPR;
+      const x = cv.getContext('2d');
+      x.setTransform(DPR, 0, 0, DPR, 0, 0);
+      // A three-lane strip; x = 1 is the middle lane.
+      const lw = 26, v = { fieldX: w / 2 - lw * 1.5, fieldW: lw * 3, laneW: lw, hitY: h, h, now: 0, pps: 40, approach: 1 };
+      const k = cv.dataset.k, base = { id: i, t: 0.15, t2: 0.85, x0: 1, x1: 1 };
+      if (k === 'block' || k === 'phaseBlock') drawObstacle(x, v, Object.assign(base, { kind: 'block', phase: k === 'phaseBlock' }));
+      else if (k === 'glass' || k === 'hardGlass') drawObstacle(x, v, Object.assign(base, { kind: 'glass', hard: k === 'hardGlass' }));
+      else if (k === 'beam') drawBeam(x, Object.assign({}, v, { hitY: h - 6, now: 0.5 }), Object.assign(base, { kind: 'beam', t: 0.6, t2: 1, warn: 0.5 }));
+      else if (k === 'sweep') drawSweeper(x, Object.assign({}, v, { hitY: h + 4 }), Object.assign(base, { kind: 'wall', phase: true, t: 0, t2: 1.1, path: [{ t: 0, x: -0.3 }, { t: 1.1, x: 2.3 }] }));
+      else drawObstacle(x, v, Object.assign(base, { kind: 'wall', phase: k === 'phaseWall', t: 0.05, t2: 0.95, x0: 1.5, x1: 1.5 }));
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Settings
+  function saveSettings() { store.set('tether-dodge.settings.v1', settings); }
+  function bindSettings() {
+    const sc = $('set-scroll'), of = $('set-offset'), ra = $('set-rate'), vo = $('set-volume'), nf = $('set-nofail');
+    const out = () => {
+      $('out-scroll').textContent = settings.scroll.toFixed(1) + '×';
+      $('out-offset').textContent = (settings.offset > 0 ? '+' : '') + settings.offset + ' ms';
+      $('out-volume').textContent = settings.volume + '%';
+    };
+    sc.value = settings.scroll; of.value = settings.offset; ra.value = String(settings.rate); vo.value = settings.volume; nf.checked = settings.noFail;
+    out();
+    sc.addEventListener('input', () => { settings.scroll = +sc.value; setApproach(); out(); saveSettings(); });
+    of.addEventListener('input', () => { settings.offset = +of.value; out(); saveSettings(); });
+    ra.addEventListener('change', () => { settings.rate = +ra.value; saveSettings(); });
+    vo.addEventListener('input', () => { settings.volume = +vo.value; Synth.setVolume(settings.volume); out(); saveSettings(); });
+    nf.addEventListener('change', () => { settings.noFail = nf.checked; saveSettings(); });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  resize();
+  bindSettings();
+  renderCards();
+  renderLegend();
+  if (matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches) $('touch-note').hidden = false;
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderCards(); renderLegend(); });
+  requestAnimationFrame(frame);
+
+  // Small hook for automated checks and for poking at the game from the console.
+  window.Tether = { start, get game() { return game; }, get screen() { return screen; }, LEVELS, Synth, buildSong, leadMidi };
+})();
+</script>
+</body>
+</html>
