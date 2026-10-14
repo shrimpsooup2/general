@@ -237,7 +237,7 @@ details.settings[open] summary::after { content: " –"; }
           <rect class="e-soul" x="214" y="22" width="44" height="9" rx="4.5"></rect>
         </svg>
       </div>
-      <p class="tag"><strong>A five-lane rhythm prototype.</strong> Your paddle catches. Snap through gaps. Send your soul where the paddle can't go.</p>
+      <p class="tag"><strong>A five-lane rhythm prototype.</strong> Your paddle catches. Snap through gaps. Stretch your soul where the paddle can't go.</p>
     </header>
 
     <p class="touch-note" id="touch-note" hidden>This demo is played with a keyboard: arrows, Shift and Ctrl or Space.</p>
@@ -250,7 +250,7 @@ details.settings[open] summary::after { content: " –"; }
         <dl class="keys">
           <div><dt><kbd>←</kbd><kbd>→</kbd></dt><dd><b>Move</b> one lane. Press the other way mid-move to turn back; tap fast to hover between lanes.</dd></div>
           <div><dt><kbd>Shift</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Snap</b>: teleport one lane. It crosses zips and slips through gaps a move can't.</dd></div>
-          <div><dt><kbd>Ctrl</kbd> / <kbd>Space</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Soul</b>: hold the arrow and it slides out while the paddle stays put. Let go and it snaps back.</dd></div>
+          <div><dt><kbd>Ctrl</kbd> / <kbd>Space</kbd> + <kbd>←</kbd><kbd>→</kbd></dt><dd><b>Soul</b>: it stretches out on an elastic tether and catches any note, straight through blocks and walls. The farther it goes, the slower it pulls. Let go and it springs back past the paddle. The paddle stays put meanwhile.</dd></div>
           <div><dt><kbd>Esc</kbd> <kbd>R</kbd></dt><dd>Pause · restart</dd></div>
         </dl>
         <p class="note-mac">A and D work as arrows. On a Mac, Ctrl + arrows switches desktops, so use Space for the soul.</p>
@@ -337,7 +337,7 @@ details.settings[open] summary::after { content: " –"; }
     <dl class="stats">
       <div><dt>Accuracy</dt><dd id="r-acc"></dd></div>
       <div><dt>Max combo</dt><dd id="r-combo"></dd></div>
-      <div><dt>Hold ticks</dt><dd id="r-ticks"></dd></div>
+      <div><dt>Soul catches</dt><dd id="r-soul"></dd></div>
     </dl>
     <table class="breakdown">
       <thead><tr><th>Type</th><th>Perfect</th><th>Good</th><th>Miss</th></tr></thead>
@@ -356,7 +356,7 @@ details.settings[open] summary::after { content: " –"; }
 <script>
 (function () {
   'use strict';
-  const { K, Game, compile, holdX, grade: gradeOf, clamp } = window.TetherEngine;
+  const { K, Game, compile, holdX, soulStep, grade: gradeOf, clamp } = window.TetherEngine;
   const LEVELS = window.TetherLevels.LEVELS;
   const $ = (id) => document.getElementById(id);
 
@@ -542,6 +542,16 @@ details.settings[open] summary::after { content: " –"; }
       f.frequency.exponentialRampToValueAtTime(5200, at + 0.08);
       this.env(g, at, 0.002, 0.11, 0.1);
       n.connect(f).connect(g).connect(this.sfx);
+    },
+    twang(at, stretch) {
+      const amt = clamp(Math.abs(stretch) / 3, 0.3, 1);
+      const o = this.osc('triangle', 300 + 260 * amt, at, at + 0.4), f = this.filter('lowpass', 2600, 4), g = this.gain();
+      o.frequency.exponentialRampToValueAtTime(110, at + 0.24);
+      const lfo = this.osc('sine', 24, at, at + 0.4), depth = this.gain();
+      depth.gain.value = 40 * amt;
+      lfo.connect(depth).connect(o.frequency);
+      this.env(g, at, 0.003, 0.11 * amt, 0.3);
+      o.connect(f).connect(g).connect(this.sfx);
     },
     clank(at) {
       const g = this.gain(), f = this.filter('lowpass', 1800, 2);
@@ -1069,7 +1079,7 @@ details.settings[open] summary::after { content: " –"; }
     $('r-badges').innerHTML = badges.join('');
     $('r-acc').textContent = (acc * 100).toFixed(2) + '%';
     $('r-combo').textContent = S.maxCombo;
-    $('r-ticks').textContent = S.ticks ? `${S.ticksHeld}/${S.ticks}` : '–';
+    $('r-soul').textContent = S.soulCatches;
     const rows = [['Notes', ['tap']], ['Gems', ['gem']], ['Holds', ['hold']], ['Zips', ['zip']], ['Soul', ['soul']]];
     $('r-rows').innerHTML = rows.map(([label, types]) => {
       const t = { perfect: 0, good: 0, miss: 0 };
@@ -1116,7 +1126,7 @@ details.settings[open] summary::after { content: " –"; }
       case 'judge': {
         const n = ev.note;
         const x = n.type === 'hold' ? holdX(n, Math.min(ev.t, n.t2)) : n.x;
-        const col = n.type === 'gem' || (n.type === 'hold' && n.thin) ? C.gem : n.type === 'zip' ? C.zip : n.type === 'soul' ? C.soul : C.tap;
+        const col = ev.by === 'soul' || n.type === 'soul' ? C.soul : n.type === 'gem' || (n.type === 'hold' && n.thin) ? C.gem : n.type === 'zip' ? C.zip : C.tap;
         if (ev.grade === 'miss') {
           addJudge('MISS', C.hazard);
           break;
@@ -1125,7 +1135,8 @@ details.settings[open] summary::after { content: " –"; }
         addJudge(ev.grade === 'perfect' ? 'PERFECT' : 'GOOD', ev.grade === 'perfect' ? '#ffffff' : C.gem,
           ev.grade === 'good' && ev.part !== 'body' ? (off < 0 ? 'EARLY' : 'LATE') : '');
         if (ev.part === 'body') { burst(X(v, x), v.hitY, col, 10, 200, 0.45); break; }
-        burst(X(v, x), v.hitY, col, ev.grade === 'perfect' ? 16 : 9, 260, 0.5);
+        const at0 = ev.by === 'soul' ? game.soul.x : x;
+        burst(X(v, at0), v.hitY, col, ev.grade === 'perfect' ? 16 : 9, 260, 0.5);
         fx.lanes.push({ x, col, at: performance.now() });
         if (!runAudio) break;
         const at = soundAt(n.t);
@@ -1148,6 +1159,9 @@ details.settings[open] summary::after { content: " –"; }
         fx.ghosts.push({ x: ev.from, at: performance.now() });
         burst(X(v, ev.to), v.hitY, C.zip, 8, 180, 0.35);
         Synth.whoosh(Synth.ctx.currentTime);
+        break;
+      case 'twang':
+        Synth.twang(Synth.ctx.currentTime, ev.stretch);
         break;
       case 'blocked':
         Synth.clank(Synth.ctx.currentTime);
@@ -1257,16 +1271,9 @@ details.settings[open] summary::after { content: " –"; }
     const invuln = game.t < game.invulnUntil && Math.floor(now / 70) % 2;
     if (!dying && !invuln) stamp(g, held.soul ? sprites.paddleDim : held.snap ? sprites.paddleSnap : sprites.paddle, px, v.hitY);
     if (s.out && !dying) {
-      const sx = X(v, s.x), dx = Math.abs(sx - px);
-      g.save();
-      g.beginPath();
-      g.moveTo(px, v.hitY);
-      g.quadraticCurveTo((px + sx) / 2, v.hitY - 16 - dx * 0.22, sx, v.hitY - 3);
-      g.lineCap = 'round';
-      g.strokeStyle = rgba(C.soul, 0.25); g.lineWidth = 6; g.stroke();
-      g.strokeStyle = rgba(C.soul, 0.9); g.lineWidth = 1.6; g.setLineDash([3, 4]); g.stroke();
-      g.restore();
-      stamp(g, sprites.soulBody, sx, v.hitY - 3);
+      const sx = X(v, s.x);
+      drawTether(g, px, sx, v.hitY, s.x - p.x, s.v);
+      drawSoul(g, sx, v.hitY - 3, s.v);
       if (Math.random() < 0.5) particles.push({ x: sx + (Math.random() - 0.5) * 10, y: v.hitY - 6, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 40, life: 0.5, max: 0.5, col: C.soul, r: 1.4 });
     }
 
@@ -1378,17 +1385,46 @@ details.settings[open] summary::after { content: " –"; }
     g.fillStyle = C.void;
     g.fillRect(0, 0, W, H);
     drawField(g, v, t, spb, Math.exp(-((t / spb) % 1) * 6));
-    const px = X(v, 2);
-    const swing = Math.max(0, Math.sin(t * 1.4));
-    const side = Math.floor((t * 1.4) / (Math.PI * 2)) % 2 ? -1 : 1;
-    const sx = X(v, 2 + 2 * Math.pow(swing, 0.7) * side);
+    // Every 2.4 s pull toward alternating sides for 0.45 s, then let go.
+    const cycle = t % 2.4, pull = cycle < 0.45 ? (Math.floor(t / 2.4) % 2 ? -1 : 1) : 0;
+    const dt = Math.min(0.05, t - (ambient.t || t));
+    ambient.t = t;
+    for (let left = dt; left > 1e-6; left -= K.STEP) soulStep(ambient.soul, pull, 2, Math.min(K.STEP, left));
+    const px = X(v, 2), sx = X(v, ambient.soul.x);
     stamp(g, sprites.paddle, px, v.hitY);
-    if (swing > 0.02) {
-      g.beginPath(); g.moveTo(px, v.hitY);
-      g.quadraticCurveTo((px + sx) / 2, v.hitY - 16 - Math.abs(sx - px) * 0.22, sx, v.hitY - 3);
-      g.strokeStyle = rgba(C.soul, 0.85); g.lineWidth = 1.6; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
-      stamp(g, sprites.soulBody, sx, v.hitY - 3);
+    if (Math.abs(ambient.soul.x - 2) > 0.01 || pull) {
+      drawTether(g, px, sx, v.hitY, ambient.soul.x - 2, ambient.soul.v);
+      drawSoul(g, sx, v.hitY - 3, ambient.soul.v);
     }
+  }
+  const ambient = { t: 0, soul: { x: 2, v: 0, pull: 0 } };
+
+  // The tether is a rubber band: it thins as it stretches and bows as the soul swings.
+  function drawTether(c, px, sx, y, stretch, vel) {
+    const dx = sx - px, n = 14;
+    const mid = Math.max(1.4, 6 - 1.25 * Math.abs(stretch));
+    const bow = -8 - Math.abs(dx) * 0.06 + clamp(vel * 0.5, -12, 12);
+    const top = [], bot = [];
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, k = Math.sin(Math.PI * u);
+      const x = px + dx * u, yc = y - 3 * u + bow * k;
+      const h = (6 + (mid - 6) * k) / 2;
+      top.push([x, yc - h]); bot.push([x, yc + h]);
+    }
+    c.save();
+    c.beginPath();
+    top.forEach(([x, yy], i) => (i ? c.lineTo(x, yy) : c.moveTo(x, yy)));
+    for (let i = bot.length - 1; i >= 0; i--) c.lineTo(bot[i][0], bot[i][1]);
+    c.closePath();
+    c.fillStyle = rgba(C.soul, 0.28 + Math.min(0.5, Math.abs(stretch) * 0.14));
+    c.shadowColor = C.soul; c.shadowBlur = 10;
+    c.fill();
+    c.restore();
+  }
+  // The soul squashes along its direction of travel.
+  function drawSoul(c, x, y, vel) {
+    const sp = sprites.soulBody, k = 1 + Math.min(0.7, Math.abs(vel) * 0.03);
+    c.drawImage(sp.cv, x - (sp.w * k) / 2, y - sp.h / (2 * k), sp.w * k, sp.h / k);
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -1473,7 +1509,7 @@ details.settings[open] summary::after { content: " –"; }
   // ---------------------------------------------------------------------------------------------
   // Menu
   function fmtTime(s) { return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`; }
-  const PREVIEW = { 'first-light': [41, 50], 'phase-shift': [40.5, 47.5], soulbreak: [152, 158] };
+  const PREVIEW = { 'first-light': [48, 56], 'phase-shift': [72, 78], soulbreak: [32, 38] };
 
   function renderCards() {
     const root = $('levels');
@@ -1521,7 +1557,7 @@ details.settings[open] summary::after { content: " –"; }
     ['hold', 'Hold and slide', 'Stay under it to the end.'],
     ['thin', 'Thin hold', 'On a divider. Tap ← → fast to hover.'],
     ['zip', 'Zip', 'Snap across it with Shift.'],
-    ['soul', 'Soul note', 'Only your soul can catch it.'],
+    ['soul', 'Soul note', 'Only your soul can catch it. Your soul catches the others too.'],
     ['block', 'Block', 'Touch it and the run ends.'],
     ['phaseBlock', 'Dashed block', 'Snaps hop right over it.'],
     ['wall', 'Wall', "Can't be crossed. Snap through a gap."],

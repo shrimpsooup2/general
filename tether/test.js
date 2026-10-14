@@ -111,18 +111,40 @@ ok(judges(ev).join() === 'soul@2:miss', 'paddle alone does not catch a soul note
 g = mk((c) => c.soul(1, 2));
 ev = run(g, [{ t: 0.5, kind: 'soul', down: true }], 2);
 ok(judges(ev).join() === 'soul@2:perfect', 'releasing the soul catches the note in your lane');
-// soul speed: 4 lanes/beat at 60 bpm = 4 lanes/s -> 2 lanes in 0.5 s
+// the elastic tether
 g = mk((c) => c.soul(1, 4));
 ev = run(g, [{ t: 0.4, kind: 'soul', down: true }, { t: 0.5, kind: 'dir', dir: 1, down: true }], 1.2);
-ok(judges(ev).join() === 'soul@4:perfect', 'soul slides out and catches lane 4');
+ok(judges(ev).join() === 'soul@4:perfect', 'soul stretches out and catches lane 4');
 ok(g.paddle.x === 2, 'paddle stays put while the soul is out');
-run(g, [{ t: 1.2, kind: 'dir', dir: 1, down: false }], 1.4);
-ok(g.soul.x === 2, 'releasing the arrow snaps the soul back: x=' + g.soul.x);
-run(g, [{ t: 1.4, kind: 'soul', down: false }], 1.6);
+g = mk(() => {});
+run(g, [{ t: 0, kind: 'soul', down: true }, { t: 0.1, kind: 'dir', dir: -1, down: true }], 0.11);
+const v1 = Math.abs(g.soul.v);
+run(g, [], 0.25);
+ok(v1 > 2 * Math.abs(g.soul.v) && g.soul.x < 1, `pulling slows as it stretches (${v1.toFixed(1)} -> ${Math.abs(g.soul.v).toFixed(1)} lanes/s)`);
+g = mk(() => {});
+run(g, [{ t: 0, kind: 'soul', down: true }, { t: 0.1, kind: 'dir', dir: 1, down: true }], 0.9);
+ok(g.soul.x === 4, 'held pull rests against the field edge');
+let lowest = 9;
+g.input({ t: 0.9, kind: 'dir', dir: 1, down: false });
+for (let t = 0.92; t < 1.3; t += 0.01) { g.advance(t); lowest = Math.min(lowest, g.soul.x); }
+ev = g.drain();
+ok(lowest < 1.5, `letting go flings it past the paddle (to x=${lowest.toFixed(2)})`);
+ok(ev.some((e) => e.type === 'twang'), 'letting go of a stretch twangs');
+run(g, [], 1.6);
+ok(Math.abs(g.soul.x - 2) < 0.05, 'and it settles back on the paddle');
+run(g, [{ t: 1.6, kind: 'soul', down: false }], 2.2);
 ok(!g.soul.out, 'releasing ctrl puts the soul away');
 g = mk((c) => c.block(0, 3, 4).soul(1, 4));
 ev = run(g, [{ t: 0.4, kind: 'soul', down: true }, { t: 0.5, kind: 'dir', dir: 1, down: true }], 2);
 ok(judges(ev).join() === 'soul@4:perfect' && g.state !== 'dead', 'soul passes through blocks');
+// the soul catches normal notes too, and the slingshot catches on the far side
+g = mk((c) => c.hold(0.5, 3, 2).block(0, 4, 3, 4).tap(1, 4));
+ev = run(g, [{ t: 0.4, kind: 'soul', down: true }, { t: 0.6, kind: 'dir', dir: 1, down: true }], 1.5);
+ok(ev.some((e) => e.type === 'judge' && e.note.type === 'tap' && e.grade === 'perfect' && e.by === 'soul'), 'soul catches a normal note inside a block');
+ok(g.stats.soulCatches === 1, 'soul catches are counted');
+g = mk((c) => c.hold(0.5, 3, 2).tap(1, 4).tap(1.5, 1));
+ev = run(g, [{ t: 0.4, kind: 'soul', down: true }, { t: 0.6, kind: 'dir', dir: 1, down: true }, { t: 1.364, kind: 'dir', dir: 1, down: false }], 2);
+ok(judges(ev).filter((j) => j.startsWith('tap')).join() === 'tap@4:perfect,tap@1:perfect', 'slingshot: let go just before the beat to catch the other side');
 
 // 11 hold ticks & body; leaving early
 g = mk((c) => c.hold(1, 2, 2));

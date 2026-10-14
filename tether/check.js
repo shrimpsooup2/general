@@ -9,12 +9,13 @@
   impossible there and it's reported.
 
   The paddle is treated as if it could stop anywhere. In the game it stops only on lanes, so a
-  position between lanes is held by tapping back and forth. Soul notes are checked separately: the
-  paddle has to stay still while the soul is out.
+  position between lanes is held by tapping back and forth. Soul notes, and notes the chart marks
+  for the soul with c.reach, are checked separately: the paddle has to stay still while the soul is
+  out, and the soul is searched over its real controls and physics.
 */
 'use strict';
 const path = require('path');
-const { K, compile, holdX } = require(path.join(__dirname, 'engine.js'));
+const { K, compile, holdX, soulStep } = require(path.join(__dirname, 'engine.js'));
 const { LEVELS } = require(path.join(__dirname, 'levels.js'));
 
 const RES = 0.02;
@@ -48,6 +49,7 @@ function checkLevel(level) {
   const problems = [];
   const cons = [];
   for (const n of c.notes) {
+    if (n.by === 'soul') continue; // planned for the soul; checked with the soul phrases
     if (n.type === 'tap' || n.type === 'gem') cons.push({ t: n.t, kind: 'at', x: n.x, tol: n.half + PH, what: `${n.type} x=${n.x}` });
     else if (n.type === 'hold') {
       cons.push({ t: n.t, kind: 'at', x: n.path[0].x, tol: n.half + PH, what: `hold head x=${n.path[0].x}` });
@@ -158,55 +160,73 @@ function checkLevel(level) {
   return { problems, notes, len, counts };
 }
 
-// Soul phrases. While the soul is out the paddle can't move, so for each phrase there has to be a
-// lane the paddle can sit in for the whole phrase. Then the soul itself: it slides at the level's
-// soul speed while an arrow is held, rests only against an edge or back at the paddle, and snaps
-// back fast. Every soul note has to be under it dead on time.
+// Soul phrases: soul notes plus normal notes the chart marks as meant for the soul (c.reach).
+// While the soul is out the paddle can't move, so a phrase needs a lane the paddle can sit in
+// throughout. The soul is then searched over its real controls: every 10 ms the player can pull
+// left, pull right or let go, and the engine's own tether physics runs in between. Every note in
+// the phrase has to be under the soul dead on time.
 function checkSoul(level, c, cons, problems) {
   const spb = 60 / level.bpm;
   const beat = (t) => (t / spb).toFixed(2);
-  const v = (level.soulLanesPerBeat || K.SOUL_LANES_PER_BEAT) / spb;
-  const dt = RES / v;
-  const ret = Math.max(1, Math.round(K.SOUL_RETURN / v));
-  const tol = K.SOUL_NOTE_HALF + K.SOUL_HALF;
+  const CTRL = 0.01, SUB = 5;
+  // How long a pull from rest takes to get within reach of something `d` lanes away.
+  const pullTime = (d) => {
+    const s = { x: 0, v: 0, pull: 0 };
+    let t = 0;
+    while (s.x < d && t < 1) { soulStep(s, 1, 0, CTRL / SUB); t += CTRL / SUB; }
+    return t;
+  };
   const phrases = [];
   for (const n of c.notes) {
-    if (n.type !== 'soul') continue;
+    if (n.type !== 'soul' && n.by !== 'soul') continue;
     const last = phrases[phrases.length - 1];
     if (last && n.t - last[last.length - 1].t < 1.5 * spb) last.push(n);
     else phrases.push([n]);
   }
-  for (const ph of phrases) {
+  // If no single paddle lane works, the player can let go between notes and move: split the
+  // phrase at its widest gap, as long as that leaves time to let go (0.3 s), and check each part.
+  const queue = phrases.slice();
+  while (queue.length) {
+    const ph = queue.shift();
     const end = ph[ph.length - 1].t;
     let solved = false, why = 'no lane where the paddle can sit still for the whole phrase';
     for (let p = 0; p <= K.MAX_X && !solved; p++) {
-      const start = ph[0].t - Math.abs(ph[0].x - p) / v - 0.03;
+      const start = ph[0].t - pullTime(Math.abs(ph[0].x - p) - ph[0].half - K.SOUL_HALF) - 0.05;
       if (cons.some((a) => a.t >= start && a.t <= end && (a.kind === 'zip' || Math.abs(p - a.x) >= a.tol))) continue;
       if (c.obstacles.some((o) => o.t < end && o.t2 > start && p - PH < o.hi && p + PH > o.lo)) continue;
-      const home = Math.round(p / RES);
-      let S = new Uint8Array(N);
-      S[home] = 1;
+      let states = [{ x: p, v: 0, pull: 0 }];
       let k = 0, failed = null;
-      for (let t = start; k < ph.length; t += dt) {
-        const nx = new Uint8Array(N);
-        for (let i = 0; i < N; i++) {
-          if (!S[i]) continue;
-          if (i > 0) nx[i - 1] = 1;
-          if (i < N - 1) nx[i + 1] = 1;
-          if (i === 0 || i === N - 1 || i === home) nx[i] = 1;
-          nx[i > home ? Math.max(home, i - ret) : Math.min(home, i + ret)] = 1;
+      for (let t = start; k < ph.length; t += CTRL) {
+        const due = k;
+        const next = new Map();
+        for (const st of states) {
+          for (const pull of [-1, 0, 1]) {
+            const s2 = { x: st.x, v: st.v, pull: st.pull };
+            let ok = true, kk = k;
+            for (let i = 0; i < SUB && ok; i++) {
+              const t0 = t + (i * CTRL) / SUB, t1 = t0 + CTRL / SUB, from = s2.x;
+              soulStep(s2, pull, p, CTRL / SUB);
+              while (kk < ph.length && ph[kk].t <= t1) {
+                const n = ph[kk++], tol = n.half + K.SOUL_HALF;
+                if (!(Math.min(from, s2.x) < n.x + tol && Math.max(from, s2.x) > n.x - tol)) { ok = false; break; }
+              }
+            }
+            if (!ok) continue;
+            const key = Math.round(s2.x / 0.04) * 1e6 + Math.round(s2.v) * 10 + pull + 1;
+            if (!next.has(key)) next.set(key, s2);
+          }
         }
-        while (k < ph.length && ph[k].t <= t + dt) {
-          const n = ph[k++];
-          let any = false;
-          for (let i = 0; i < N; i++) if (nx[i] && Math.abs(i * RES - n.x) >= tol) nx[i] = 0; else if (nx[i]) any = true;
-          if (!any) { failed = n; break; }
-        }
-        if (failed) break;
-        S = nx;
+        while (k < ph.length && ph[k].t <= t + CTRL) k++;
+        if (!next.size) { failed = ph[due]; break; }
+        states = [...next.values()];
       }
       if (!failed) solved = true;
       else why = `the soul can't reach x=${failed.x} at beat ${beat(failed.t)} (paddle in lane ${p})`;
+    }
+    if (!solved && why.startsWith('no lane') && ph.length > 1) {
+      let at = 1;
+      for (let i = 1; i < ph.length; i++) if (ph[i].t - ph[i - 1].t > ph[at].t - ph[at - 1].t) at = i;
+      if (ph[at].t - ph[at - 1].t >= 0.3) { queue.unshift(ph.slice(0, at), ph.slice(at)); continue; }
     }
     if (!solved) problems.push(`beat ${beat(ph[0].t)}: soul phrase of ${ph.length}: ${why}`);
   }

@@ -10,6 +10,8 @@
     c.slide(b, pts)           long note that moves: pts = [[beat offset, x], ...]
     c.zip(b, x)               green zip on a divider, caught only by snapping (Shift) across it
     c.zips(b, step, xs)
+    c.reach(b, x)             a normal note placed for your soul to catch (either catcher counts;
+    c.reaches(b, step, xs)      the mark tells check.js to plan it for the soul)
     c.soul(b, x)              violet note, caught only by your soul (Ctrl/Space)
     c.souls(b, step, xs)
     c.block(b, len, x0, x1)   red block over lanes x0..x1 (instant fail)
@@ -49,6 +51,13 @@
 
     zip(b, x) { this.notes.push({ type: 'zip', t: this.s(b), x, beat: b }); return this; }
     zips(b, step, xs) { xs.forEach((x, i) => { if (x != null) this.zip(b + i * step, x); }); return this; }
+    reach(b, x) {
+      const first = this.notes.length;
+      this.tap(b, x);
+      for (let i = first; i < this.notes.length; i++) this.notes[i].by = 'soul';
+      return this;
+    }
+    reaches(b, step, xs) { xs.forEach((x, i) => { if (x != null) this.reach(b + i * step, x); }); return this; }
     soul(b, x) { this.notes.push({ type: 'soul', t: this.s(b), x, beat: b }); return this; }
     souls(b, step, xs) { xs.forEach((x, i) => { if (x != null) this.soul(b + i * step, x); }); return this; }
 
@@ -116,194 +125,6 @@
     return Object.assign({}, meta, { chart: c.done() });
   }
 
-  // ---------------------------------------------------------------------------------------------
-  // 1. FIRST LIGHT: one mechanic at a time, with a callout before each.
-  const firstLight = level({
-    id: 'first-light',
-    name: 'First Light',
-    difficulty: 'Easy',
-    tier: 1,
-    bpm: 100,
-    blurb: 'Learn every move: lanes, gems, holds, blocks, snaps, walls and your soul.',
-    music: {
-      key: 'A', prog: ['Am', 'F', 'C', 'G'], kit: 'four', bars: 34,
-      sections: [[0, 'intro'], [2, 'groove'], [8, 'full'], [16, 'groove'], [20, 'full'], [26, 'drive'], [32, 'outro']],
-    },
-  }, (c) => {
-    // Moving
-    c.say(0, 7.5, 'MOVE', '← → switch lanes. Your paddle catches whatever it touches.');
-    c.tap(4, 2).tap(6, 2);
-    c.taps(8, 1, [2, 1, 0, 1, 2, 3, 4, 3]);
-    c.taps(16, 1, [2, 2, 0, 0, 2, 2, 4, 4]);
-
-    // Holds and slides
-    c.say(21.5, 6, 'HOLD', 'Stay under long notes, even when they slide.');
-    c.hold(24, 1.5, 3);
-    c.hold(26, 1.5, 1);
-    c.slide(28, [[0, 1], [1, 1], [2, 3], [3.5, 3]]);
-
-    // Gems
-    c.say(30.5, 5, 'GEMS', 'Gold gems sit between lanes. Catch them while you move through.');
-    c.tap(32, 3);
-    c.tap(33, 2.5).tap(34, 2);
-    c.tap(35, 2.5).tap(36, 3);
-    c.tap(37, 3.5).tap(38, 4);
-    c.tap(39, 3.5).tap(40, 3);
-    c.taps(41, 0.5, [2.5, 1.5]).tap(42, 1);
-    c.taps(43, 0.5, [1.5, 2.5]).tap(44, 3);
-    c.taps(45, 0.5, [2.5, 1.5, 0.5]).tap(47, 0);
-
-    // Blocks
-    c.say(45.5, 5, 'BLOCKS', 'Red blocks end the run. Never touch one.');
-    c.tap(48, 0);
-    c.block(49, 2, 0).taps(49, 1, [1, 1]);
-    c.block(51, 1, 0, 1).taps(51, 1, [2, 2]);
-    c.block(53, 1, 2, 4).taps(53, 1, [0, 0]);
-    c.block(55, 1.5, 0, 2).block(55, 1.5, 4).taps(55, 1, [3, 3]);
-    c.block(57, 3, 0, 1).block(57, 3, 4);
-    c.slide(57, [[0, 3], [1, 3], [1.5, 2], [2.5, 2], [3, 3]]);
-    c.block(61, 2, 2, 4).taps(61, 1, [1, 0]);
-
-    // Snap and zips
-    c.say(61.5, 6, 'SNAP', 'Hold SHIFT and tap ← → to teleport a lane. Snap across green zips.');
-    c.tap(64, 2);
-    c.zip(65, 2.5).tap(66, 3);
-    c.zip(67, 2.5).tap(68, 2);
-    c.zips(69, 1, [1.5, 0.5]).tap(71, 0);
-    c.zips(72, 1, [0.5, 1.5, 2.5, 3.5]).tap(76, 4);
-
-    // Walls
-    c.say(74.5, 5, 'WALLS', 'Moving into a wall ends the run. Snap through the gap.');
-    c.tap(77, 4);
-    c.gapWall(3.5, 76.5, 81, [[79, 0.5]]).zip(79, 3.5).tap(80, 3);
-    c.gapWall(2.5, 79.5, 84, [[82, 0.25]]).zip(82, 2.5).tap(83, 2);
-    c.gapWall(1.5, 82.5, 87, [[85, 0.25]]).zip(85, 1.5).tap(86, 1);
-
-    // Soul
-    c.say(85.5, 6, 'SOUL', 'Hold CTRL or SPACE and press ← →. Your soul slides out. Let go and it snaps back.');
-    c.hold(88, 3.5, 1);
-    c.souls(89, 1, [4, 4, 4]);
-    c.hold(92, 3.75, 0);
-    c.souls(93, 0.25, [1, 2, 3, 4]);
-    c.hold(96, 7, 2);
-    c.souls(97, 0.25, [3, 4]);
-    c.souls(99, 0.25, [1, 0]);
-    c.souls(101, 0.25, [3, 4]);
-
-    // Everything together
-    c.say(102, 3.5, 'ALL TOGETHER', '');
-    c.taps(104, 0.5, [2, null, 2.5, 3, null, 3.5, 4, null]);
-    c.taps(108, 0.5, [4, null, 3.5, 3, 2.5, 2, null, null]);
-    c.block(112, 2, 0, 1).block(112, 2, 3, 4).taps(112, 1, [2, 2]);
-    c.zips(114.5, 0.5, [2.5, 3.5]).tap(115.5, 4);
-    c.block(116, 2, 0, 3).taps(116, 1, [4, 4]);
-    c.zips(118.5, 0.5, [3.5, 2.5, 1.5]);
-    c.hold(120, 3.75, 1);
-    c.souls(121, 0.25, [2, 3, 4]);
-    c.soul(123, 0);
-    c.taps(124, 0.5, [1, 1.5, 2, 2.5, 3, 2.5, 2, 1.5]);
-    c.slide(128, [[0, 1], [2, 1], [3, 2], [5, 2]]);
-    c.tap(134, 2);
-  });
-
-  // ---------------------------------------------------------------------------------------------
-  // 2. PHASE SHIFT: the moves start to combine.
-  const phaseShift = level({
-    id: 'phase-shift',
-    name: 'Phase Shift',
-    difficulty: 'Medium',
-    tier: 2,
-    bpm: 124,
-    blurb: 'Bounces, doubles, a wall maze with tiny gaps, dashed hops and soul sweeps through blocks.',
-    music: {
-      key: 'D', prog: ['Dm', 'Bb', 'F', 'C'], kit: 'four', bars: 40,
-      sections: [[0, 'intro'], [2, 'groove'], [6, 'full'], [10, 'groove'], [14, 'full'], [18, 'break'],
-        [22, 'full'], [26, 'groove'], [30, 'drive'], [38, 'outro']],
-    },
-  }, (c) => {
-    c.say(0, 6, 'PHASE SHIFT', 'Bounces, doubles, tiny gaps and dashed walls.');
-    c.taps(4, 1, [2, 1, 2, 3]);
-
-    // Runs and bounces
-    c.taps(8, 0.5, [2, 1, 0, 1, 2, 3, 4, 3]);
-    c.taps(12, 0.5, [2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5]);
-    c.say(13.5, 4.5, 'BOUNCE', 'Touch a gem and come straight back: tap → then ← quickly.');
-    c.taps(16, 0.5, [2, 2.5, 2, 1.5, 2, 2.5, 2, 1.5]);
-    c.taps(20, 0.5, [2, 2.5, 3, 3.5, 3, 2.5, 2, 1.5]);
-
-    // Doubles
-    c.say(21.5, 4.5, 'DOUBLES', 'Two notes at once? Cross between them right on the beat.');
-    c.tap(24, [1, 2]).tap(25, [2, 3]).tap(26, [3, 4]).tap(27, [2, 3]);
-    c.taps(28, 1, [[1, 2], 2.5, [3, 4], 3.5]);
-    c.taps(32, 1, [[2, 3], 1.5]).taps(34, 0.5, [[0, 1], 0.5, [1, 2]]);
-    c.taps(36, 0.5, [2, 2.5, 3, 2.5, 2, 1.5, 1, 1.5]);
-
-    // Wall maze: the gaps are too short to move through, so snap. Zips mark each gap.
-    c.say(37, 5, 'TINY GAPS', 'Too narrow to move through. Snap through them.');
-    const G = 0.2;
-    const maze = { 0.5: [49, 50], 1.5: [47, 51], 2.5: [41, 46, 53, 54.5], 3.5: [43, 45] };
-    for (const x in maze) {
-      c.gapWall(+x, 40, 56, maze[x].map((b) => [b, G]));
-      maze[x].forEach((b) => c.zip(b, +x));
-    }
-    c.taps(40, 0.5, [2, 2]).taps(42, 0.5, [3, 3]).taps(44, 0.5, [4, 4]).tap(45.5, 3);
-    c.tap(46.5, 2).taps(48, 0.5, [1, 1]).tap(49.5, 0).tap(50.5, 1).taps(52, 0.5, [2, 2]);
-    c.taps(53.5, 0.5, [3, 3]).taps(55, 0.5, [2, 2]);
-
-    // Dashed walls: only snaps get through
-    c.say(54.5, 5, 'DASHED', 'Snaps pass dashed walls and hop dashed blocks. Touching them still fails.');
-    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(56, 8, x));
-    c.tap(56, 2).zips(57, 0.5, [2.5, 3.5]).tap(58, 4);
-    c.zips(58.5, 0.5, [3.5, 2.5, 1.5, 0.5]).taps(60.5, 0.5, [0, 0]);
-    c.zips(61.5, 0.25, [0.5, 1.5, 2.5, 3.5]).taps(62.5, 0.5, [4, 4]);
-    // Dashed blocks: a snap hops right over them, catching every zip on the way
-    c.phaseBlock(64, 2, 3).zip(65, 3.5).zip(65, 2.5).taps(65.5, 0.5, [2, 2]);
-    c.phaseBlock(66.5, 2, 1).zip(67.5, 1.5).zip(67.5, 0.5).taps(68, 0.5, [0, 0]);
-    c.phaseBlock(68.75, 2, 1, 3).zips(69.5, 0, [0.5, 1.5, 2.5, 3.5]).taps(70, 0.5, [4, 4]);
-
-    // Soul through blocks
-    c.say(69.5, 5, 'SOUL SWEEP', 'Your soul goes through blocks. Hold one arrow, tap the other to turn it around.');
-    c.hold(72, 7.25, 4).block(72, 7.5, 0, 2);
-    c.souls(73, 0.25, [3, 2, 1, 0]);
-    c.souls(75, 0.25, [0, 1, 2, 3, 4]);
-    c.souls(77, 0.5, [2, 0, 2]);
-    c.hold(81, 6.5, 0).block(81, 7, 2, 4);
-    c.souls(82, 0.25, [1, 2, 3, 4]);
-    c.souls(84, 0.5, [2, 4, 2, 4]);
-    c.souls(86, 0.25, [3, 2, 1]);
-
-    // Weave: one safe lane at a time
-    c.say(86, 3.5, 'WEAVE', 'One lane is safe. Keep moving.');
-    c.gauntlet(88, 1, [0, 1, 2, 1, 2, 3, 4, 3], 0.25, 0.5);
-    c.slide(96, [[0, 3], [1, 3], [2, 1], [3, 1]]);
-    c.taps(99.5, 0.25, [1.5, 2]);
-    c.slide(100, [[0, 2], [0.5, 2], [1.5, 4], [2, 4], [3, 2], [3.5, 2]]);
-
-    // Escape: blocks chase you down the maze; snap out through each gap in time
-    c.say(101.5, 5, 'ESCAPE', 'A block is coming down your lane. Snap out through the gap.');
-    const route = [[105, 2.5], [107, 3.5], [109, 3.5], [110, 2.5], [111, 1.5], [113, 0.5], [115, 0.5], [116, 1.5], [117.5, 2.5]];
-    const gaps = { 0.5: [], 1.5: [], 2.5: [], 3.5: [] };
-    route.forEach(([b, x]) => { gaps[x].push([b, G]); c.zip(b, x); });
-    for (const x in gaps) c.gapWall(+x, 104, 119.5, gaps[x]);
-    [[2, 105.3, 109.7], [3, 107.3, 108.8], [4, 109.3, 112], [3, 110.3, 116], [2, 111.3, 115.7],
-      [1, 113.3, 114.7], [0, 115.3, 118], [1, 116.3, 119.5], [2, 117.8, 119.5]].forEach(([L, s, e]) => c.block(s, e - s, L));
-    c.taps(104, 0.5, [2, 2]).taps(106, 0.5, [3, 3]).taps(108, 0.5, [4, 4]).tap(109.5, 3).tap(110.5, 2);
-    c.taps(112, 0.5, [1, 1]).taps(114, 0.5, [0, 0]).tap(115.5, 1).taps(116.5, 0.5, [2, 2]).taps(118, 0.5, [3, 3]);
-
-    // Finale
-    c.say(118.5, 3, 'FINALE', '');
-    c.taps(120, 0.5, [3, 3.5, [3, 4], 3.5, [2, 3], 2.5, [1, 2], 1.5]);
-    c.taps(124, 0.5, [[0, 1], 0.5, [0, 1], 1.5, [1, 2], 2.5, 3, 2.5]);
-    c.hold(128, 3.5, 2).souls(129, 0.25, [3, 4]).souls(130, 0.25, [1, 0]).soul(131, 4);
-    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(132, 4, x));
-    c.tap(132, 2).zips(132.5, 0.25, [2.5, 3.5]).tap(133.5, 4).zips(134, 0.25, [3.5, 2.5, 1.5, 0.5]).tap(135.25, 0);
-    c.gauntlet(136, 0.5, [0, 1, 2, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 3, 2, 2], 0.2, 0.25);
-    c.hold(144, 3.5, 2).block(144, 4, 0, 1).block(144, 4, 3, 4);
-    c.souls(145, 0.25, [3, 4]).souls(146, 0.25, [1, 0]).souls(147, 0.25, [1, 2, 3, 4]);
-    c.taps(148, 0.5, [2, 2.5, 3, 2.5, 2, 1.5, 1, 1.5]);
-    c.slide(152, [[0, 2], [1, 2], [2, 0], [3, 0], [5, 4], [6, 4], [7, 2]]);
-  });
-
   // A maze: walls on every divider with one gap per move. The paddle starts in `lane` and snaps
   // through each [beat, divider] of `route`. Blocks follow it out of every lane it leaves, and a
   // note waits in each lane it lands in. Returns the lane it ends in.
@@ -328,122 +149,204 @@
         if (e - s >= 0.3) c.block(s, e - s, L);
       });
     }
-    visits.slice(1).forEach(([L, s, e]) => {
-      c.tap(s + 0.25, L);
-      if (e - s >= 1) c.tap(s + 0.5, L);
-    });
+    visits.slice(1).forEach(([L, s, e]) => c.tap(s + Math.min(0.5, (e - s) / 2), L));
     return lane;
   }
 
   // ---------------------------------------------------------------------------------------------
-  // 3. SOULBREAK: everything, fast. At 150 BPM a 16th note is 100 ms, exactly one lane of travel.
+  // 1. FIRST LIGHT: one idea at a time, about one note a second.
+  const firstLight = level({
+    id: 'first-light',
+    name: 'First Light',
+    difficulty: 'Easy',
+    tier: 1,
+    bpm: 96,
+    blurb: 'One idea at a time: lanes, holds, gems, blocks, your soul and the snap.',
+    music: {
+      key: 'A', prog: ['Am', 'F', 'C', 'G'], kit: 'four', bars: 34,
+      sections: [[0, 'intro'], [2, 'groove'], [8, 'full'], [16, 'groove'], [24, 'full'], [32, 'outro']],
+    },
+  }, (c) => {
+    c.say(0, 7, 'MOVE', '← → switch lanes. The paddle catches whatever it touches.');
+    c.tap(4, 2).tap(6, 2);
+    c.taps(8, 2, [2, 1, 0, 1]);
+    c.taps(16, 1, [2, 3, 4, null, 3, null, 2, null]);
+
+    c.say(21.5, 5, 'HOLD', 'Stay under long notes, even when they slide.');
+    c.hold(24, 2, 2).hold(27, 2, 1);
+    c.slide(30, [[0, 1], [1, 1], [2, 3], [3, 3]]);
+
+    c.say(32, 4.5, 'GEMS', 'Gold gems sit between lanes. Catch them by moving through.');
+    c.taps(35, 1, [3, 2.5, 2, 1.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 3.5]);
+
+    c.say(45.5, 4.5, 'BLOCKS', 'Red blocks end the run. Get out of their lane.');
+    c.tap(48, 3);
+    c.block(50, 2, 3, 4).taps(50, 1, [2, 2]);
+    c.block(53, 2, 0, 2).taps(53, 1, [3, 3]);
+    c.block(56, 2, 2, 4).taps(56, 1, [1, 1]);
+    c.block(59, 3, 0, 1).block(59, 3, 3, 4).hold(59, 2.75, 2);
+
+    // The soul from here on: the paddle holds, the soul reaches.
+    c.say(61.5, 6, 'SOUL', 'Hold CTRL or SPACE, then an arrow. Your soul stretches out and catches notes. Let go and it springs back.');
+    c.hold(64, 3.5, 2).reaches(65, 1, [4, 4]);
+    c.hold(68, 3.5, 2).reaches(69, 1, [0, 0]);
+    c.say(71, 4, 'THROUGH', "Your soul passes through blocks. The paddle can't.");
+    c.block(72, 4, 3, 4).hold(72, 3.5, 1).reaches(73, 1, [4, 4, 4]);
+
+    c.say(76.5, 5, 'SNAP', 'Hold SHIFT and press ← →: teleport one lane. Snap across green zips.');
+    c.tap(80, 2).zip(81, 2.5).tap(82, 3).zip(84, 2.5).tap(85, 2).zip(87, 1.5).tap(88, 1);
+    c.zips(90, 1, [1.5, 2.5, 3.5]).tap(94, 4);
+
+    c.say(94.5, 3, 'TOGETHER', '');
+    c.taps(96, 1, [4, 3.5, 3, null, 2, 2.5, 3, null]);
+    c.block(104, 3, 0, 1).hold(104, 2.75, 3).reaches(105, 1, [0, 0]);
+    c.zip(108, 2.5).tap(109, 2).zip(110, 1.5).tap(111, 1);
+    c.taps(112, 1, [1, 1.5, 2, 2.5, 3, null, 3, null]);
+    c.block(120, 3, 3, 4).hold(120, 2.75, 2).reaches(121, 1, [4, 4]);
+    c.taps(124, 1, [2, 2.5, 3, null]);
+    c.slide(128, [[0, 3], [2, 3], [3, 2], [5, 2]]).tap(134, 2);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // 2. PHASE SHIFT: the moves start to combine.
+  const phaseShift = level({
+    id: 'phase-shift',
+    name: 'Phase Shift',
+    difficulty: 'Medium',
+    tier: 2,
+    bpm: 112,
+    blurb: 'Bounces, doubles, walls you snap through, dashed hops and the soul slingshot.',
+    music: {
+      key: 'D', prog: ['Dm', 'Bb', 'F', 'C'], kit: 'four', bars: 36,
+      sections: [[0, 'intro'], [2, 'groove'], [6, 'full'], [10, 'groove'], [14, 'full'], [18, 'break'],
+        [22, 'full'], [26, 'drive'], [34, 'outro']],
+    },
+  }, (c) => {
+    const G = 0.3; // wall gaps: 160 ms
+    c.say(0, 6, 'PHASE SHIFT', 'Bounces, doubles, walls and the slingshot.');
+    c.taps(4, 1, [2, 1, 2, 3]);
+
+    c.taps(8, 1, [2, 1, 0, 1]);
+    c.taps(12, 1, [2, 2.5, 3, 4]);
+    c.say(13.5, 4.5, 'BOUNCE', 'Touch a gem and come straight back: → then ← quickly.');
+    c.taps(16, 0.5, [3, 3.5, 3, null, 3, 2.5, 3, null]);
+    c.taps(20, 0.5, [2, 2.5, 2, null, null, null, 2, null]);
+
+    c.say(22, 4, 'DOUBLES', 'Two at once? Cross between them right on the beat.');
+    c.tap(24, [1, 2]).tap(26, [2, 3]).tap(28, [3, 4]).tap(30, [2, 3]).tap(31, 2);
+
+    c.say(30, 4.5, 'REACH', 'Your soul catches any note. Violet ones only your soul can catch.');
+    c.hold(32, 3.75, 2).reach(33, 4).reach(34, 0).soul(35, 0);
+    c.hold(36, 3, 1).block(36, 3.25, 2, 4).souls(37, 0.5, [4, 4, 4]).tap(39.75, 2);
+
+    c.say(38.5, 5, 'WALLS', 'Moving into a wall ends the run. Snap through the gap.');
+    c.gapWall(2.5, 40, 47.5, [[42, G], [44, G], [46, G]]).zip(42, 2.5).zip(44, 2.5).zip(46, 2.5);
+    c.taps(40, 1, [2, 2, null, 3, null, 2, null, 3]);
+    c.gapWall(3.5, 48, 56, [[49, G], [51, G]]).gapWall(1.5, 48, 56, [[53, G], [55, G]]);
+    c.zip(49, 3.5).zip(51, 3.5).zip(53, 1.5).zip(55, 1.5);
+    c.taps(48, 2, [3, 4, 3]).tap(52.5, 2).tap(54, 1).tap(56, 2);
+
+    c.say(54, 5, 'DASHED', 'Snaps pass dashed walls and hop dashed blocks. Touching them still ends the run.');
+    c.phaseWall(57, 7, 1.5).phaseWall(57, 7, 2.5);
+    c.zip(58, 2.5).tap(59.5, 3).zip(61, 2.5).tap(62, 2).zip(63, 1.5).tap(64, 1);
+    c.phaseBlock(65, 1.5, 2).zips(66, 0, [1.5, 2.5]).tap(67, 3);
+    c.phaseBlock(68, 1.5, 2).zips(69, 0, [2.5, 1.5]).taps(70, 1, [1, 1]);
+
+    c.say(70, 5, 'SLINGSHOT', 'Stretch your soul and let go just before the beat: it flies back past the paddle.');
+    c.hold(72, 4.5, 2).reach(73, 4).reach(74, 1).reach(75, 0).reach(76, 3);
+    c.hold(78, 4.5, 2).block(78, 5, 3, 4).reaches(79, 0.5, [4, 4]).reach(80, 1).reach(81, 0).reach(82, 3);
+
+    c.say(82, 3.5, 'WEAVE', 'One lane is safe at a time.');
+    c.gauntlet(84, 1, [2, 1, 0, 1, 2, 3, 4, 3], 0.3, 0.5);
+    c.hold(92, 3.5, 3).block(92, 4, 0, 1).reaches(93, 1, [0, 0]);
+
+    c.say(94.5, 3, 'FINALE', '');
+    c.taps(96, 1, [3, 3.5, 4, 3.5]);
+    c.tap(100, [1, 2]).tap(102, [2, 3]).tap(103, 3);
+    c.gapWall(2.5, 104, 111.5, [[106, G], [109, G]]).zip(106, 2.5).zip(109, 2.5);
+    c.taps(104, 1, [3, null, null, 2, null, null, 3, null]);
+    c.hold(112, 3.5, 3).reach(113, 0).reach(114, 4);
+    c.zips(116, 1, [2.5, 1.5]).taps(118, 1, [1, 2]);
+    c.hold(122, 3.5, 2).block(122, 4, 3, 4).reach(123, 4).reach(124, 1).soul(125, 0);
+    c.taps(126, 1, [2, 3, null, 2]);
+    c.phaseBlock(130, 1.5, 2).tap(130, 1).zips(131, 0, [1.5, 2.5]).tap(132, 3);
+    c.slide(133, [[0, 3], [1, 3], [2, 2], [3, 2]]);
+    c.slide(137, [[0, 2], [2, 2], [3, 1], [4, 1], [5, 2], [6, 2]]);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // 3. SOULBREAK: everything together, at 132 BPM.
   const soulbreak = level({
     id: 'soulbreak',
     name: 'Soulbreak',
     difficulty: 'Hard',
     tier: 3,
-    bpm: 150,
-    blurb: '16th-note streams, hovering by tapping, 40 ms gaps, triple hops and split paddle/soul play.',
+    bpm: 132,
+    blurb: 'Faster runs, hovering, a gap maze with blocks on your heels, hops and soul work through walls.',
     music: {
-      key: 'E', prog: ['Em', 'C', 'G', 'D'], kit: 'break', bars: 48,
-      sections: [[0, 'intro'], [2, 'full'], [6, 'drive'], [10, 'full'], [14, 'break'], [18, 'drive'],
-        [22, 'full'], [26, 'break'], [30, 'drive'], [46, 'outro']],
+      key: 'E', prog: ['Em', 'C', 'G', 'D'], kit: 'break', bars: 40,
+      sections: [[0, 'intro'], [2, 'full'], [6, 'drive'], [8, 'full'], [12, 'break'], [16, 'drive'],
+        [20, 'full'], [24, 'drive'], [28, 'full'], [30, 'drive'], [38, 'outro']],
     },
   }, (c) => {
-    const G = 0.1; // gap width in beats: 40 ms
-
-    c.say(0, 7, 'SOULBREAK', 'Everything, fast. No-fail mode is in the settings.');
+    const G = 0.15; // wall gaps: 68 ms
+    c.say(0, 7, 'SOULBREAK', 'Everything at once. No-fail is in the settings.');
     c.taps(4, 0.5, [2, 1, 2, 3]).taps(6, 0.5, [2, 1.5, 1, 0.5]);
 
-    // Streams: a 16th per lane is the paddle's top speed
-    c.taps(8, 0.25, [0, 1, 2, 3, 4, null, 4, 3, 2, 1, 0, null, 0, 0.5, 1, 1.5]);
-    c.taps(12, 0.25, [2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5, 2, 1.5, 2, 2.5, 2, 1.5, 1, 0.5]);
-    c.taps(16, 0.25, [0, 0.5, 0, 0.5, 1, 1.5, 1, 1.5, 2, 2.5, 2, 2.5, 3, 3.5, 4, null]);
-    c.taps(20, 0.25, [4, 3.5, 4, 3.5, 3, 2.5, 3, 2.5, [1, 2], null, 1.5, null, [2, 3], 2.5, [1, 2], 1.5]);
+    c.taps(8, 0.5, [0, 1, 2, 3, 4, 3.5, 3, 2.5]);
+    c.taps(12, 0.5, [2, null, 2.5, 2, null, 1.5, 1, 0.5]);
+    c.taps(16, 0.25, [0, 1, 2, 3, 4]).taps(18, 0.5, [3.5, 3, null, 2]);
+    c.taps(20, 1, [[1, 2], 2.5, [3, 4], 3.5]);
 
-    // Hover: thin holds on a divider. Tap ← → fast to stay on them.
-    c.say(21.5, 4.5, 'HOVER', 'Thin holds sit on a divider. Tap ← → ← → fast to stay on it.');
-    c.tap(24, 2).hold(24.5, 1.5, 1.5).tap(26.5, 1);
-    c.hold(27, 1.5, 2.5).tap(29, 3);
-    c.taps(29.5, 0.25, [3.5, 3, 3.5, 4, 3.5, 3, 2.5, 2]);
-    c.hold(31.5, 2, 1.5).taps(34, 0.25, [1, 0.5, 0, 0.5, 1, 1.5, 2, 2.5]);
-    c.slide(36, [[0, 3], [1, 3], [1.5, 2.5], [2.5, 2.5], [3, 2]], true);
-    c.tap(39.5, 2);
+    c.say(22, 4, 'HOVER', 'Thin holds sit on a divider. Tap ← → fast to stay on them.');
+    c.tap(24, 3).hold(24.5, 1, 2.5).tap(26, 2).hold(26.5, 1, 1.5).tap(28, 1);
+    c.taps(28.5, 0.5, [1.5, 2, 2.5, 3]).hold(30.5, 0.75, 3.5).tap(31.5, 3);
 
-    // Needle: the wall maze again with 40 ms gaps, and only every other gap marked
-    c.say(37.5, 4.5, 'NEEDLE', 'The gaps are 40 ms now, and blocks follow you out. Snap on the beat.');
-    maze(c, 2, 40, 55.75, [[41, 2.5], [42, 3.5], [43.5, 3.5], [44, 2.5], [45, 1.5], [46, 0.5], [47.5, 0.5],
-      [48, 1.5], [49, 2.5], [50, 3.5], [51.5, 3.5], [52, 2.5], [53, 1.5], [54.5, 1.5]], G, 2);
+    c.say(30, 4, 'NEEDLE', 'Snap through the gaps on the beat. Blocks follow you out.');
+    maze(c, 3, 32, 47.75, [[33, 3.5], [34.5, 3.5], [35, 2.5], [36, 1.5], [37, 0.5], [38.5, 0.5],
+      [39, 1.5], [40, 2.5], [41.5, 2.5], [42, 1.5], [43.5, 1.5], [44, 2.5], [45, 3.5], [46.5, 3.5]], G, 1);
 
-    // Split: the paddle holds its lane while the soul sweeps the blocked ones
-    c.say(54, 4, 'SPLIT', 'The paddle holds its note while your soul sweeps the blocked lanes.');
-    c.hold(56, 7.5, 2).block(56, 8, 0, 1).block(56, 8, 3, 4);
-    c.souls(57, 0.25, [3, 4]).souls(57.75, 0.25, [3, 2, 1, 0]).souls(59, 0.25, [1, 2, 3, 4]);
-    c.souls(60.5, 0.5, [4, 2, 0, 2, 4]).souls(63, 0.25, [3, 2]);
-    c.taps(64, 0.5, [2, 2, 2]).taps(65.25, 0.25, [2.5, 3, 3.5, 4]);
-    c.hold(66, 5.5, 4).block(66.5, 5.5, 0, 2);
-    c.souls(67, 0.25, [3, 2, 1, 0]).souls(68.25, 0.25, [1, 2, 3, 4]);
-    c.souls(69.5, 0.25, [3, 2, 1, 0]).souls(70.75, 0.25, [1, 2]);
+    c.say(46, 4, 'SPLIT', 'The paddle holds. Your soul does the rest, slingshots included.');
+    c.hold(48, 7, 3).block(48, 7.5, 0, 2);
+    c.reaches(49, 0.5, [0, 0]).reach(50, 4).soul(51, 1).reach(51.5, 0).reach(52.5, 4).souls(53.5, 0.5, [0, 0]);
+    c.hold(56, 7, 1).block(56.25, 7.25, 2, 4);
+    c.reach(57, 4).soul(57.5, 4).reach(58, 0).reach(59, 3).reach(59.5, 4).soul(60.5, 0).reach(61.5, 2).reach(62, 4);
 
-    // Hops: chained snaps over dashed blocks; every zip crossed counts
-    c.say(70, 4, 'HOPS', 'Chain snaps over dashed blocks. Every zip you cross counts.');
-    c.taps(72, 0.5, [4, 4]).phaseBlock(72.75, 1.25, 3).zip(73, 3.5).zip(73, 2.5);
-    c.phaseBlock(73.25, 0.65, 1).zip(73.5, 1.5).zip(73.5, 0.5).taps(74, 0.25, [0, 0.5, 1, 0.5, 0]);
-    c.phaseBlock(75.25, 0.75, 1, 3).zips(75.5, 0, [0.5, 1.5, 2.5, 3.5]).taps(76, 0.25, [4, 4]);
-    c.phaseBlock(76.5, 1.25, 2, 3).zips(77, 0, [3.5, 2.5, 1.5]).tap(77.5, 1);
-    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(78, 4, x));
-    c.zips(78, 0.25, [1.5, 2.5, 3.5, null, 3.5, 2.5, 1.5, 0.5, null, 0.5, 1.5, 2.5, null, 2.5, 1.5, null]);
-    c.taps(82, 0.25, [1, 1.5, 2, 2.5, 3, 3.5, 3, 2.5]);
-    c.phaseBlock(84, 1.5, 0, 1).block(84, 1.4, 3, 4).taps(84, 0.5, [2, 2, 2]);
-    c.zip(85.5, 2.5).phaseBlock(85.75, 1.25, 2).tap(86, 3).zips(86.5, 0, [2.5, 1.5]).tap(87, 1);
+    c.say(62, 4, 'HOPS', 'Chain snaps over dashed blocks. Every zip you cross counts.');
+    c.tap(64, 0).phaseBlock(64.5, 1.25, 1, 2).zips(65, 0, [0.5, 1.5, 2.5]).taps(65.5, 0.5, [3, 3]);
+    c.phaseBlock(66.5, 1.25, 2).zips(67, 0, [2.5, 1.5]).taps(67.5, 0.5, [1, 0.5, 0]);
+    c.phaseBlock(69, 1.5, 1, 3).zips(69.5, 0, [0.5, 1.5, 2.5, 3.5]).taps(70, 0.5, [4, 4]);
+    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(71.5, 4.5, x));
+    c.zips(72, 0.5, [3.5, 2.5, 1.5, null, 1.5, 2.5, null, 2.5]);
+    c.taps(76, 1, [2, 3, 2, 2]);
 
-    // Corridor: follow the slide between the walls, dodging the blocks inside, then thread out
-    c.say(86, 4, 'CORRIDOR', 'Ride the slide between the walls.');
-    c.gapWall(0.5, 88, 96, [[95.5, G]]).wall(88, 8, 2.5);
-    c.slide(88, [[0, 1], [1, 1], [1.5, 2], [2.5, 2], [3, 1], [4, 1], [4.5, 2], [5.5, 2], [6, 1], [7, 1]]);
-    c.block(88, 0.9, 2).block(89.7, 0.6, 1).block(91.1, 0.8, 2).block(92.7, 0.6, 1).block(94.1, 1.1, 2);
-    c.zip(95.5, 0.5).taps(96, 0.25, [0, 0, 0.5, 1, 1.5, 2]);
-    c.gapWall(1.5, 97.5, 104, [[101.5, G]]).wall(97.5, 6.5, 3.5);
-    c.slide(98, [[0, 2], [1, 3], [2, 2], [3, 3]]).tap(101.25, 2).zip(101.5, 1.5);
-    c.taps(102, 0.25, [1, 1, 0.5, 0]);
+    // Corridor: ride the slide between the walls; while it holds still, the soul reaches out
+    c.say(78, 4, 'CORRIDOR', 'Ride the slide. When it holds still, your soul reaches through the walls.');
+    c.wall(80, 7.5, 0.5).wall(80, 7.5, 2.5);
+    c.slide(80, [[0, 2], [1, 2], [1.5, 1], [3, 1], [3.5, 2], [5, 2], [5.5, 1], [7, 1]]);
+    c.block(80, 0.8, 1).block(81.7, 1.1, 2).block(83.7, 1.1, 1).block(85.7, 1.1, 2);
+    c.reaches(82.25, 0.5, [4, 4]).reach(84, 0).reach(86, 4).reach(86.5, 0);
+    c.gapWall(1.5, 88, 95.5, [[95, G]]).wall(88, 7.5, 3.5);
+    c.slide(88, [[0, 2], [1, 3], [2, 2], [3, 3], [4, 3]]);
+    c.reaches(92.5, 0.5, [0, 0]).tap(94, 2).zip(95, 1.5).tap(95.5, 1);
 
-    // Breather: half time, soul and hovers
-    c.say(103, 3.5, 'BREATHE', '');
-    c.hold(104, 3.5, 0).souls(105, 0.5, [2, 4, 2, 4]);
-    c.hold(108, 1.5, 0.5).tap(110, 1).hold(110.5, 1.5, 1.5).tap(112.5, 2);
-    c.hold(113, 3, 2).souls(114, 0.25, [1, 0]).souls(115, 0.25, [3, 4]);
-    c.taps(116.5, 0.5, [2.5, 3, 3.5]).hold(118, 1.5, 3.5);
+    c.say(94, 3.5, 'WEAVE', '');
+    c.gauntlet(96, 0.5, [1, 2, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 2, 1, 1, 2], 0.2, 0.25);
+    c.hold(104, 3.5, 2).block(104, 4, 0, 1).block(104, 4, 3, 4).reach(105, 4).reach(106, 1).reach(107, 0);
+    c.taps(108, 0.5, [2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5]);
 
-    // Climax
-    c.say(118.5, 3, 'CLIMAX', '');
-    c.taps(120, 0.25, [4, 3, 2, 1, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5]);
-    c.taps(124, 0.25, [2, 1.5, 2, 2.5, 2, 1.5, 1, 0.5, 0, 0.5, 1, 1.5, [1, 2], null, [2, 3], null]);
-    c.gauntlet(128, 0.5, [3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 2, 1, 2, 3, 3, 2], 0.15, 0.25);
-    c.hold(136, 3.5, 2).souls(137, 0.25, [3, 4, 3, 2, 1, 0]).souls(138.75, 0.25, [1, 2, 3, 4]);
-    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(140, 4, x));
-    c.tap(140, 2).zips(140.5, 0.25, [1.5, 0.5, null, 0.5, 1.5, 2.5, 3.5, null, 3.5, 2.5, null, 1.5]);
-    c.tap(144, 1).hold(144.5, 1.25, 1.5).taps(146, 0.25, [2, 2.5, 3, 2.5]).hold(147, 0.75, 2.5).tap(148, 3);
-    c.phaseBlock(148.5, 1, 1, 2).zips(149, 0, [2.5, 1.5, 0.5]).taps(149.5, 0.25, [0, 0.5, 1, 1.5, 2, 2]);
-
-    // Last push. Walled in: the paddle catches its lane while the soul works outside the walls.
-    c.say(150, 3.5, 'LAST PUSH', 'Your soul goes through walls too.');
-    c.wall(152, 8, 1.5).gapWall(2.5, 152, 160, [[159, G]]);
-    c.taps(152, 0.5, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]);
-    c.souls(152.75, 0.25, [3, 4]).souls(153.75, 0.25, [1, 0]).souls(154.75, 0.25, [3, 4, 3, 2, 1, 0]);
-    c.souls(156.75, 0.25, [1, 2, 3, 4]).souls(158, 0.25, [3, 4]);
-    c.block(159.25, 0.75, 2).zip(159, 2.5).taps(159.5, 0.25, [3, 3.5, 4]);
-    c.phaseBlock(160.25, 0.75, 1, 3).zips(160.5, 0, [3.5, 2.5, 1.5, 0.5]).taps(161, 0.25, [0, 0.5, 1, 0.5, 0]);
-    c.phaseBlock(162.25, 1, 1, 2).block(162.25, 0.85, 4).zips(162.5, 0, [0.5, 1.5, 2.5]).tap(163, 3);
-    c.taps(163.25, 0.25, [3.5, 3, 2.5, 2, 1.5, 1, 0.5, 0]);
-    c.hold(165.5, 2, 0).souls(166, 0.25, [1, 2, 3, 4]);
-    c.gauntlet(168, 0.5, [0, 1, 2, 3, 4, 3, 2, 1, 0, 0, 1, 2, 2, 3, 3, 2], 0.12, 0.25);
-    c.taps(176, 0.25, [2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5, 0, 0.5, 1, 1.5]);
-    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(180, 4, x));
-    c.zips(180, 0.25, [2.5, 3.5, null, 3.5, 2.5, 1.5, 0.5, null, 0.5, 1.5, 2.5, null, 2.5]);
-
-    // Outro
-    c.hold(184, 2, 2).souls(184.5, 0.25, [1, 0]).souls(185.25, 0.25, [3, 4]);
-    c.slide(186.5, [[0, 2], [1, 2], [2, 1], [3, 3], [4, 2], [4.5, 2]]);
+    c.say(110, 3, 'CLIMAX', '');
+    c.taps(112, 0.25, [2, 1, 0]).taps(113, 0.5, [0.5, 1, 1.5, 2, 2.5, 3]);
+    c.taps(116, 0.5, [[3, 4], 3.5, 3, 2.5, [1, 2], 1.5, 1, 0.5]);
+    maze(c, 0, 120, 127.75, [[121, 0.5], [122, 1.5], [123.5, 1.5], [124, 0.5], [125, 0.5], [126, 1.5], [127, 2.5]], G, 2);
+    c.hold(128, 3.5, 3).reach(129, 0).reach(130, 4).soul(131, 1);
+    [0.5, 1.5, 2.5, 3.5].forEach((x) => c.phaseWall(132, 4, x));
+    c.zips(132, 0.5, [2.5, 1.5, 0.5, null, 0.5, 1.5, 2.5, 3.5]);
+    c.taps(136, 1, [4, 3, 2.5, 2]);
+    c.gauntlet(140, 0.5, [2, 3, 4, 3, 2, 1, 0, 1, 2, 2, 3, 2], 0.2, 0.25);
+    c.hold(146, 3.5, 2).block(146, 4, 0, 1).block(146, 4, 3, 4).reaches(147, 0.5, [4, 4]).reach(148, 1).soul(149, 0);
+    c.taps(150, 0.5, [2, 2.5, 3, 3]);
+    c.slide(152, [[0, 3], [1, 3], [2, 2], [3, 2], [4, 1], [5, 2], [6, 2]]);
   });
 
   const LEVELS = [firstLight, phaseShift, soulbreak];

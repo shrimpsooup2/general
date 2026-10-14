@@ -15,9 +15,15 @@
 
     PADDLE_HALF: 0.27,
     PADDLE_SPEED: 10, // lanes per second
+    // The soul sits on an elastic tether. Pulling aims it SOUL_REACH lanes out and covers 63% of
+    // the stretch that's left every SOUL_PULL_TAU seconds, so it slows the farther it goes. Letting
+    // go hands it to a spring that snaps it back, overshoots the paddle and bounces.
     SOUL_HALF: 0.18,
-    SOUL_RETURN: 36, // lanes per second when it snaps back
-    SOUL_LANES_PER_BEAT: 4, // default slide speed, so a sweep lands on 16th notes
+    SOUL_REACH: 4.6,
+    SOUL_PULL_TAU: 0.2,
+    SOUL_PULL_MAX: 24, // lanes per second
+    SOUL_SPRING: 24, // rad/s
+    SOUL_DAMP: 0.32, // damping ratio: below 1 means it overshoots
 
     TAP_HALF: 0.34,
     GEM_HALF: 0.11,
@@ -27,12 +33,10 @@
     BLOCK_HALF: 0.4,
     WALL_HALF: 0.035,
 
-    PERFECT: 0.045,
-    GOOD: 0.095,
-    ZIP_PERFECT: 0.05,
-    ZIP_GOOD: 0.11,
-    SOUL_PERFECT: 0.05,
-    SOUL_GOOD: 0.1,
+    PERFECT: 0.05,
+    GOOD: 0.11,
+    ZIP_PERFECT: 0.055,
+    ZIP_GOOD: 0.12,
 
     TICK_BEATS: 0.25,
     TICK_BEFORE: 0.07,
@@ -44,6 +48,21 @@
 
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
   const overlaps = (alo, ahi, blo, bhi) => alo < bhi && ahi > blo;
+
+  // One step of the soul on its tether. s = { x, v, pull }; home is the paddle's x.
+  function soulStep(s, pull, home, dt) {
+    if (s.pull && !pull) s.v = 0; // let go: the tether takes it from rest
+    s.pull = pull;
+    const d = s.x - home;
+    if (pull) {
+      s.v = clamp((pull * K.SOUL_REACH - d) / K.SOUL_PULL_TAU, -K.SOUL_PULL_MAX, K.SOUL_PULL_MAX);
+    } else {
+      const w = K.SOUL_SPRING;
+      s.v += (-w * w * d - 2 * K.SOUL_DAMP * w * s.v) * dt;
+    }
+    s.x += s.v * dt;
+    if (s.x < 0 || s.x > K.MAX_X) { s.x = clamp(s.x, 0, K.MAX_X); s.v = 0; }
+  }
 
   function holdX(n, t) {
     const p = n.path;
@@ -120,7 +139,6 @@
       this.texts = c.texts;
       this.units = c.units;
       this.endTime = c.end + 1.2;
-      this.soulSpeed = (level.soulLanesPerBeat || K.SOUL_LANES_PER_BEAT) / this.spb;
 
       // Practice from a point in the song: earlier notes are skipped and don't count.
       this.from = opts.from || 0;
@@ -139,7 +157,7 @@
       this.t = opts.startTime != null ? opts.startTime : this.from - 1.6;
       this.state = 'play'; // play | dead | done
       this.paddle = { x: start, target: start, from: start, bonkT: -9, bonkDir: 0 };
-      this.soul = { x: start, from: start, out: false, dir: 0 };
+      this.soul = { x: start, from: start, v: 0, pull: 0, out: false };
       this.held = { snap: false, soul: false, dirs: [] };
       this.invulnUntil = -Infinity;
       this.queue = [];
@@ -148,7 +166,7 @@
       this.obsCursor = 0;
       this.stats = {
         perfect: 0, good: 0, miss: 0, value: 0, judged: 0,
-        combo: 0, maxCombo: 0, hits: 0, ticks: 0, ticksHeld: 0,
+        combo: 0, maxCombo: 0, hits: 0, ticks: 0, ticksHeld: 0, soulCatches: 0,
         byType: {},
       };
     }
@@ -267,14 +285,11 @@
       }
 
       s.from = s.x;
-      const sdir = h.soul && h.dirs.length ? h.dirs[h.dirs.length - 1] : 0;
-      s.dir = sdir;
-      if (h.soul && sdir) {
-        s.x = clamp(s.x + sdir * this.soulSpeed * dt, 0, K.MAX_X);
-      } else if (s.out || h.soul) {
-        const step = K.SOUL_RETURN * dt;
-        s.x = Math.abs(p.x - s.x) <= step ? p.x : s.x + Math.sign(p.x - s.x) * step;
-        if (!h.soul && s.x === p.x) s.out = false;
+      if (h.soul || s.out) {
+        const pull = h.soul && h.dirs.length ? h.dirs[h.dirs.length - 1] : 0;
+        if (s.pull && !pull && Math.abs(s.x - p.x) > 0.4) this.emit({ type: 'twang', t: t1, stretch: s.x - p.x });
+        soulStep(s, pull, p.x, dt);
+        if (!h.soul && Math.abs(s.x - p.x) < 0.02 && Math.abs(s.v) < 0.4) { s.out = false; s.x = p.x; s.v = 0; s.pull = 0; }
       } else {
         s.x = s.from = p.x;
       }
@@ -294,8 +309,9 @@
         if (this.state !== 'play') return;
       }
 
+      // While it's out the soul catches anything the paddle can, plus soul notes.
       const SH = K.SOUL_HALF;
-      const slo = Math.min(s.from, s.x) - SH, shi = Math.max(s.from, s.x) + SH;
+      const slo = s.out ? Math.min(s.from, s.x) - SH : 1e9, shi = s.out ? Math.max(s.from, s.x) + SH : -1e9;
       const notes = this.notes;
       while (this.noteCursor < notes.length && notes[this.noteCursor].done) this.noteCursor++;
       for (let i = this.noteCursor; i < notes.length; i++) {
@@ -304,17 +320,19 @@
         if (n.done) continue;
         switch (n.type) {
           case 'tap':
-          case 'gem':
-            this.window(n, n, t1, overlaps(plo, phi, n.x - n.half, n.x + n.half), K.PERFECT, K.GOOD);
+          case 'gem': {
+            const byPaddle = overlaps(plo, phi, n.x - n.half, n.x + n.half);
+            this.window(n, n, t1, byPaddle || overlaps(slo, shi, n.x - n.half, n.x + n.half), K.PERFECT, K.GOOD, byPaddle ? 'paddle' : 'soul');
             break;
+          }
           case 'soul':
-            this.window(n, n, t1, s.out && overlaps(slo, shi, n.x - n.half, n.x + n.half), K.SOUL_PERFECT, K.SOUL_GOOD);
+            this.window(n, n, t1, overlaps(slo, shi, n.x - n.half, n.x + n.half), K.PERFECT, K.GOOD, 'soul');
             break;
           case 'zip':
             if (t1 > n.t + K.ZIP_GOOD) this.judge(n, 'miss', t1);
             break;
           case 'hold':
-            this.holdStep(n, t1, plo, phi);
+            this.holdStep(n, t1, plo, phi, slo, shi);
             break;
         }
       }
@@ -322,22 +340,23 @@
 
     // Shared timing rule. A touch inside the perfect window is perfect. A touch only before it,
     // or only after it (up to the good window), is good. No touch by the end of the window is a miss.
-    window(n, st, t, touch, P, G) {
+    window(n, st, t, touch, P, G, by) {
       const off = t - n.t;
       if (off < -G) return;
       if (touch) {
-        if (off < -P) st.early = true;
-        else if (off <= P) return this.judge(n, 'perfect', t, st);
-        else if (off <= G) return this.judge(n, 'good', t, st);
+        if (off < -P) { st.early = true; st.by = by; }
+        else if (off <= P) return this.judge(n, 'perfect', t, st, null, by);
+        else if (off <= G) return this.judge(n, 'good', t, st, null, by);
       }
-      if (off > P && st.early) return this.judge(n, 'good', t, st);
+      if (off > P && st.early) return this.judge(n, 'good', t, st, null, st.by);
       if (off > G) this.judge(n, 'miss', t, st);
     }
 
-    holdStep(n, t, plo, phi) {
+    holdStep(n, t, plo, phi, slo, shi) {
       const hx = holdX(n, clamp(t, n.t, n.t2));
-      const touch = overlaps(plo, phi, hx - n.half, hx + n.half);
-      if (!n.head.done) this.window(n, n.head, t, touch, K.PERFECT, K.GOOD);
+      const byPaddle = overlaps(plo, phi, hx - n.half, hx + n.half);
+      const touch = byPaddle || overlaps(slo, shi, hx - n.half, hx + n.half);
+      if (!n.head.done) this.window(n, n.head, t, touch, K.PERFECT, K.GOOD, byPaddle ? 'paddle' : 'soul');
       if (touch && t >= n.t - K.GOOD) n.lastTouch = t;
       n.holding = touch && t >= n.t && t <= n.t2;
       while (n.tick < n.ticks.length && t >= n.ticks[n.tick] + K.TICK_AFTER) {
@@ -360,7 +379,7 @@
       }
     }
 
-    judge(n, grade, t, st, part) {
+    judge(n, grade, t, st, part, by) {
       st = st || n;
       st.done = true;
       st.grade = grade;
@@ -373,7 +392,8 @@
       bt[grade]++;
       if (grade === 'miss') this.breakCombo(t);
       else this.bump();
-      this.emit({ type: 'judge', t, note: n, grade, part: part || (n.type === 'hold' ? 'head' : 'note') });
+      if (by === 'soul' && grade !== 'miss') S.soulCatches++;
+      this.emit({ type: 'judge', t, note: n, grade, by, part: part || (n.type === 'hold' ? 'head' : 'note') });
     }
 
     bump() {
@@ -416,7 +436,7 @@
     return acc >= 0.95 ? 'S' : acc >= 0.9 ? 'A' : acc >= 0.8 ? 'B' : acc >= 0.7 ? 'C' : 'D';
   }
 
-  const api = { K, Game, compile, holdX, grade, clamp };
+  const api = { K, Game, compile, holdX, soulStep, grade, clamp };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TetherEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
