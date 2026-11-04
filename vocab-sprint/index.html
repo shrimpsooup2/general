@@ -561,11 +561,25 @@ const Engine = (() => {
   const FIRST_S = [12, 25, 60, 240, 360];
   const EASE_STEP = [-0.15, -0.05, -0.03, 0.02, 0.06];
 
+  // How well a word is learned, 0-1: a running score of how much of each answer was right,
+  // weighted toward recent answers (each answer counts 40%). Six exact answers in a row reach
+  // 95%. Progress saved before this score existed is estimated from right/total answers.
+  const MASTERY_STEP = 0.4;
+  function mastery(st) {
+    if (!st) return 0;
+    if (st.m != null) return st.m;
+    return st.n ? (st.c / st.n) * (1 - Math.pow(1 - MASTERY_STEP, st.n)) : 0;
+  }
+  function addScore(st, prev, score) {
+    st.m = mastery(prev) * (1 - MASTERY_STEP) + MASTERY_STEP * score;
+    return st;
+  }
   function level(st) {
     if (!st) return 0;
-    if (st.s >= 86400) return 4;
-    if (st.s >= 3600) return 3;
-    if (st.s >= 180) return 2;
+    const m = mastery(st);
+    if (m >= 0.95) return 4;
+    if (m >= 0.8) return 3;
+    if (m >= 0.5) return 2;
     return 1;
   }
 
@@ -658,7 +672,7 @@ const Engine = (() => {
     return { card: order[0], kind: "extra", caughtUp: true };
   }
 
-  return { G, LEVELS, R_DUE, level, recall, dueAt, review, calibrate, pick };
+  return { G, LEVELS, R_DUE, level, mastery, addScore, recall, dueAt, review, calibrate, pick };
 })();
 // ===== ENGINE END =====
 
@@ -768,7 +782,10 @@ const Engine = (() => {
     const seen = new Set();
     for (const u of units) {
       for (const w of u.words) {
-        const id = "d:" + u.id + ":" + norm(w.word);
+        // A second entry for the same word (another part of speech) gets the part of speech
+        // added to its id; first entries keep their plain id so saved progress still matches.
+        let id = "d:" + u.id + ":" + norm(w.word);
+        if (seen.has(id)) id += ":" + (w.pos || "2");
         if (seen.has(id)) continue;
         seen.add(id);
         const toks = tokens(w.def);
@@ -812,6 +829,7 @@ const Engine = (() => {
         // "d:" marks word-to-definition progress; anything else is from the earlier reversed version.
         if (!k.startsWith("d:") || !v || !(num(v.s, 0) > 0) || !(num(v.t, 0) > 0)) continue;
         const st = { s: +v.s, t: +v.t, e: num(v.e, 1), n: num(v.n, 1), c: num(v.c, 0), w: num(v.w, 0) };
+        if (Number.isFinite(+v.m) && v.m != null) st.m = Math.min(1, Math.max(0, +v.m));
         if (num(v.lf, 0) > 0) st.lf = +v.lf;
         s.cards[k] = st;
       }
@@ -1148,11 +1166,11 @@ const Engine = (() => {
       ? cards.map((c) => {
         const st = S.cards[c.id];
         const lv = Engine.level(st);
-        const pct = st ? Math.round(100 * Engine.recall(st, now, S.L)) + "%" : "";
+        const pct = st ? Math.round(100 * Engine.mastery(st)) + "%" : "";
         return '<li class="word-row"><p class="wr-head"><span class="wr-word">' + esc(c.word) + "</span>" +
           (c.pos ? '<span class="wr-pos">' + esc(c.pos) + "</span>" : "") + "</p>" +
           '<span class="chip"><i class="sw lv' + lv + '"></i>' + Engine.LEVELS[lv].name +
-          (pct ? ' <span class="pct" title="Estimated chance you recall it right now">' + pct + "</span>" : "") + "</span>" +
+          (pct ? ' <span class="pct" title="How much of each answer you got right, recent answers counting most">' + pct + "</span>" : "") + "</span>" +
           '<p class="wr-def">' + esc(c.def) + "</p></li>";
       }).join("")
       : '<li class="empty-note">Tick a unit to see its words.</li>';
@@ -1385,6 +1403,20 @@ const Engine = (() => {
     return { kind: "wrong" };
   }
 
+  // How much of a not-quite answer was right, 0-1: the better of matching words in order and
+  // matching letters.
+  function closeness(raw, def) {
+    const a = tokens(raw), b = tokens(def);
+    if (!a.length) return 0;
+    const dp = [];
+    for (let i = 0; i <= a.length; i++) dp.push(new Array(b.length + 1).fill(0));
+    for (let i = a.length - 1; i >= 0; i--) {
+      for (let j = b.length - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+    const sa = a.join(" "), sb = b.join(" ");
+    return Math.max(dp[0][0] / Math.max(a.length, b.length), 1 - osa(sa, sb) / Math.max(sa.length, sb.length));
+  }
+
   function median(arr) {
     if (arr.length < 6) return null;
     const s = arr.slice().sort((x, y) => x - y);
@@ -1431,6 +1463,10 @@ const Engine = (() => {
     const prev = S.cards[c.id];
     const before = Engine.level(prev);
     const out = Engine.review(prev, grade, now, S.L);
+    // Exact = 100%, fewer with hints; close = partial credit by how near it was; wrong = 0.
+    const score = ok ? (heavy ? 0.3 : Math.max(0.4, 1 - 0.2 * P.hints)) : res.kind === "close" ? Math.min(0.9, closeness(raw, c.def)) : 0;
+    Engine.addScore(out.st, prev, score);
+    P.lastScore = score;
     S.cards[c.id] = out.st;
     if (prev) {
       S.L = Engine.calibrate(S.L, out.R, grade);
@@ -1466,15 +1502,20 @@ const Engine = (() => {
     else if (P.isNew && grade >= G.GOOD) note = "You already knew this one.";
     else if (grade === G.EASY) note = "Quick.";
     else if (grade === G.HARD) note = P.hints ? "With a hint, so it will come back a little sooner." : "That took a moment, so it will come back a little sooner.";
-    const up = after > before && before > 0
-      ? '<span class="lvl-up"><i class="sw lv' + after + '"></i>Now ' + Engine.LEVELS[after].name.toLowerCase() + "</span>"
-      : "";
+    const up = learnedChip(after > before && before > 0);
     $("feedback").innerHTML = '<div class="fb good"><p class="fb-title">' + ICON.check + "Correct " + up + "</p>" +
       (note ? '<p class="fb-note">' + note + "</p>" : "") + "</div>";
     const milestone = P.ses.streak > 0 && P.ses.streak % 10 === 0;
     Sound.play(milestone ? "streak" : "good");
     if (milestone) Confetti.burst();
-    P.timer = setTimeout(nextCard, note || up ? 1200 : 650);
+    P.timer = setTimeout(nextCard, note || (after > before && before > 0) ? 1200 : 750);
+  }
+
+  function learnedChip(levelUp) {
+    const st = S.cards[P.card.id];
+    const lv = Engine.level(st);
+    return '<span class="lvl-up"><i class="sw lv' + lv + '"></i>' + Math.round(100 * Engine.mastery(st)) + "% learned" +
+      (levelUp ? " · now " + Engine.LEVELS[lv].name.toLowerCase() : "") + "</span>";
   }
 
   // A miss: show the definition and have them type it once before moving on.
@@ -1490,9 +1531,11 @@ const Engine = (() => {
       cls = P.isNew ? "new" : "bad";
       title = P.isNew ? "New word" : "Here it is";
     } else if (res.kind === "other") {
-      title = "That's the definition of “" + res.other.word + "”";
+      title = "That's the definition of “" + res.other.word + "”" +
+        (res.other.word === c.word && res.other.pos ? " as a " + ({ "n.": "noun", "v.": "verb", "adj.": "adjective", "adv.": "adverb" }[res.other.pos] || res.other.pos) : "");
     }
-    $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + esc(title) + "</p>" +
+    $("feedback").innerHTML = '<div class="fb ' + cls + '"><p class="fb-title">' + esc(title) +
+      (res.kind === "blank" && P.isNew ? "" : " " + learnedChip(false)) + "</p>" +
       '<p class="fb-def">' + (raw ? diffMarkup(c, raw) : esc(c.def)) + "</p>" +
       (raw ? '<p class="fb-yours">You wrote <span>' + esc(raw) + "</span></p>" : "") +
       '<p class="fb-instr" id="fb-instr">' + (raw ? "Underlined words were missing or different. " : "") +

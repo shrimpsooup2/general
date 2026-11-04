@@ -22,8 +22,11 @@ Open `index.html` in a browser. No build step and no install.
   further out. The push is bigger when you answer quickly and when the word had time to fade first.
 - New words come in when nothing is due and you are keeping up, so the pace adapts to you.
   A word you already know on first sight skips ahead.
-- Levels: **Learning** (under 3 min), **Familiar** (3 min+), **Strong** (1 hour+), **Mastered** (1 day+).
-  These are how long until your recall chance drops to 90%.
+- Each word has a **learned %** based on how much you get right: an exact answer scores 100%
+  (less with hints), a close one gets partial credit for how near it was, and a miss scores 0.
+  Recent answers count most, so six exact answers in a row reach 95%.
+  Levels: **Learning** (under 50%), **Familiar** (50%+), **Strong** (80%+), **Mastered** (95%+).
+  When a word comes back is still decided by the spacing schedule.
 - The word list on the home screen hides definitions until you tap **Show definitions**.
 
 The memory model is in the `ENGINE` block of `index.html`. It uses a power-law forgetting curve
